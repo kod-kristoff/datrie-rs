@@ -1,0 +1,17 @@
+[package]
+name = "datrie-clib"
+authors = ["C2Rust"]
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+name = "datrie"
+path = "lib.rs"
+crate-type = ["cdylib", "staticlib", "rlib"]
+
+[dependencies]
+datrie = { version = "0.1.0", path = "../lib" }
+android_log-sys = "0.3"
+libc = "0.2"

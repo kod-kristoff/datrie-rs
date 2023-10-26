@@ -1,0 +1,10 @@
+/target
+/Cargo.lock
+/tmp/
+*.o
+/build-aux/
+*.log
+*.trs
+*.lo
+*/.deps/
+*/.libs/

@@ -1,6 +1,6 @@
 use ::libc;
 
-use crate::datrie::{
+use datrie::{
     alpha_map::_AlphaMap,
     fileutils::{_IO_codecvt, _IO_marker, _IO_wide_data},
     trie::_Trie,
