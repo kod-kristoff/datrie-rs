@@ -9,12 +9,12 @@ extern "C" {
     fn free(_: *mut libc::c_void);
     fn fseek(__stream: *mut FILE, __off: libc::c_long, __whence: libc::c_int) -> libc::c_int;
     fn ftell(__stream: *mut FILE) -> libc::c_long;
-    fn __assert_fail(
-        __assertion: *const libc::c_char,
-        __file: *const libc::c_char,
-        __line: libc::c_uint,
-        __function: *const libc::c_char,
-    ) -> !;
+    // fn __assert_fail(
+    //     __assertion: *const libc::c_char,
+    //     __file: *const libc::c_char,
+    //     __line: libc::c_uint,
+    //     __function: *const libc::c_char,
+    // ) -> !;
     fn serialize_int32_be_incr(buff: *mut *mut uint8, val: int32);
     fn file_read_int32(file: *mut FILE, o_val: *mut int32) -> Bool;
     fn file_write_int32(file: *mut FILE, val: int32) -> Bool;
@@ -23,6 +23,14 @@ extern "C" {
 pub type __off_t = libc::c_long;
 pub type __off64_t = libc::c_long;
 pub type size_t = libc::c_ulong;
+
+// pub extern "C" fn __assert_fail(__assertion: *const libc::c_char,
+//         __file: *const libc::c_char,
+//         __line: libc::c_uint,
+//         __function: *const libc::c_char,
+// ) ->! {
+
+// }
 #[derive(Copy, Clone)]
 #[repr(C)]
 pub struct _IO_FILE {
@@ -355,28 +363,44 @@ unsafe extern "C" fn alpha_map_add_range_only(
         if begin_node != end_node {
             if (*begin_node).next == end_node {
             } else {
-                __assert_fail(
-                    b"begin_node->next == end_node\0" as *const u8 as *const libc::c_char,
-                    b"alpha-map.c\0" as *const u8 as *const libc::c_char,
-                    396 as libc::c_int as libc::c_uint,
-                    (*::core::mem::transmute::<&[u8; 63], &[libc::c_char; 63]>(
-                        b"int alpha_map_add_range_only(AlphaMap *, AlphaChar, AlphaChar)\0",
-                    ))
-                    .as_ptr(),
+                panic!(
+                    "begin_node->next == end_node" // b"alpha-map.c\0" as *const u8 as *const libc::c_char,
+                                                   // 396 as libc::c_int as libc::c_uint,
+                                                   // (*::core::mem::transmute::<&[u8; 63], &[libc::c_char; 63]>(
+                                                   //     b"int alpha_map_add_range_only(AlphaMap *, AlphaChar, AlphaChar)\0",
+                                                   // ))
+                                                   // .as_ptr(),
                 );
+                // __assert_fail(
+                //     b"begin_node->next == end_node\0" as *const u8 as *const libc::c_char,
+                //     b"alpha-map.c\0" as *const u8 as *const libc::c_char,
+                //     396 as libc::c_int as libc::c_uint,
+                //     (*::core::mem::transmute::<&[u8; 63], &[libc::c_char; 63]>(
+                //         b"int alpha_map_add_range_only(AlphaMap *, AlphaChar, AlphaChar)\0",
+                //     ))
+                //     .as_ptr(),
+                // );
             }
             'c_3243: {
                 if (*begin_node).next == end_node {
                 } else {
-                    __assert_fail(
-                        b"begin_node->next == end_node\0" as *const u8 as *const libc::c_char,
-                        b"alpha-map.c\0" as *const u8 as *const libc::c_char,
-                        396 as libc::c_int as libc::c_uint,
-                        (*::core::mem::transmute::<&[u8; 63], &[libc::c_char; 63]>(
-                            b"int alpha_map_add_range_only(AlphaMap *, AlphaChar, AlphaChar)\0",
-                        ))
-                        .as_ptr(),
+                    panic!(
+                        "begin_node->next == end_node" // b"alpha-map.c\0" as *const u8 as *const libc::c_char,
+                                                       // 396 as libc::c_int as libc::c_uint,
+                                                       // (*::core::mem::transmute::<&[u8; 63], &[libc::c_char; 63]>(
+                                                       //     b"int alpha_map_add_range_only(AlphaMap *, AlphaChar, AlphaChar)\0",
+                                                       // ))
+                                                       // .as_ptr(),
                     );
+                    // __assert_fail(
+                    //     b"begin_node->next == end_node\0" as *const u8 as *const libc::c_char,
+                    //     b"alpha-map.c\0" as *const u8 as *const libc::c_char,
+                    //     396 as libc::c_int as libc::c_uint,
+                    //     (*::core::mem::transmute::<&[u8; 63], &[libc::c_char; 63]>(
+                    //         b"int alpha_map_add_range_only(AlphaMap *, AlphaChar, AlphaChar)\0",
+                    //     ))
+                    //     .as_ptr(),
+                    // );
                 }
             };
             (*begin_node).end = (*end_node).end;

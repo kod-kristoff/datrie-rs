@@ -39,12 +39,12 @@ extern "C" {
         __outbuf: *mut *mut libc::c_char,
         __outbytesleft: *mut size_t,
     ) -> size_t;
-    fn __assert_fail(
-        __assertion: *const libc::c_char,
-        __file: *const libc::c_char,
-        __line: libc::c_uint,
-        __function: *const libc::c_char,
-    ) -> !;
+    // fn __assert_fail(
+    //     __assertion: *const libc::c_char,
+    //     __file: *const libc::c_char,
+    //     __line: libc::c_uint,
+    //     __function: *const libc::c_char,
+    // ) -> !;
     fn alpha_map_free(alpha_map: *mut AlphaMap);
     fn alpha_map_add_range(
         alpha_map: *mut AlphaMap,
@@ -206,29 +206,31 @@ unsafe extern "C" fn conv_to_alpha(
     let mut byte_p: *const libc::c_uchar = 0 as *const libc::c_uchar;
     if ::core::mem::size_of::<AlphaChar>() as libc::c_ulong == 4 as libc::c_int as libc::c_ulong {
     } else {
-        __assert_fail(
-            b"sizeof (AlphaChar) == 4\0" as *const u8 as *const libc::c_char,
-            b"trietool.c\0" as *const u8 as *const libc::c_char,
-            121 as libc::c_int as libc::c_uint,
-            (*::core::mem::transmute::<&[u8; 67], &[libc::c_char; 67]>(
-                b"size_t conv_to_alpha(ProgEnv *, const char *, AlphaChar *, size_t)\0",
-            ))
-            .as_ptr(),
-        );
+        panic!("sizeof (AlphaChar) == 4");
+        // __assert_fail(
+        //     b"sizeof (AlphaChar) == 4\0" as *const u8 as *const libc::c_char,
+        //     b"trietool.c\0" as *const u8 as *const libc::c_char,
+        //     121 as libc::c_int as libc::c_uint,
+        //     (*::core::mem::transmute::<&[u8; 67], &[libc::c_char; 67]>(
+        //         b"size_t conv_to_alpha(ProgEnv *, const char *, AlphaChar *, size_t)\0",
+        //     ))
+        //     .as_ptr(),
+        // );
     }
     'c_2942: {
         if ::core::mem::size_of::<AlphaChar>() as libc::c_ulong == 4 as libc::c_int as libc::c_ulong
         {
         } else {
-            __assert_fail(
-                b"sizeof (AlphaChar) == 4\0" as *const u8 as *const libc::c_char,
-                b"trietool.c\0" as *const u8 as *const libc::c_char,
-                121 as libc::c_int as libc::c_uint,
-                (*::core::mem::transmute::<&[u8; 67], &[libc::c_char; 67]>(
-                    b"size_t conv_to_alpha(ProgEnv *, const char *, AlphaChar *, size_t)\0",
-                ))
-                .as_ptr(),
-            );
+            panic!("sizeof (AlphaChar) == 4");
+            //             __assert_fail(
+            //     b"sizeof (AlphaChar) == 4\0" as *const u8 as *const libc::c_char,
+            //     b"trietool.c\0" as *const u8 as *const libc::c_char,
+            //     121 as libc::c_int as libc::c_uint,
+            //     (*::core::mem::transmute::<&[u8; 67], &[libc::c_char; 67]>(
+            //         b"size_t conv_to_alpha(ProgEnv *, const char *, AlphaChar *, size_t)\0",
+            //     ))
+            //     .as_ptr(),
+            // );
         }
     };
     res = iconv(
@@ -272,29 +274,31 @@ unsafe extern "C" fn conv_from_alpha(
     let mut res: size_t = 0;
     if ::core::mem::size_of::<AlphaChar>() as libc::c_ulong == 4 as libc::c_int as libc::c_ulong {
     } else {
-        __assert_fail(
-            b"sizeof (AlphaChar) == 4\0" as *const u8 as *const libc::c_char,
-            b"trietool.c\0" as *const u8 as *const libc::c_char,
-            154 as libc::c_int as libc::c_uint,
-            (*::core::mem::transmute::<&[u8; 69], &[libc::c_char; 69]>(
-                b"size_t conv_from_alpha(ProgEnv *, const AlphaChar *, char *, size_t)\0",
-            ))
-            .as_ptr(),
-        );
+        panic!("sizeof (AlphaChar) == 4");
+        // __assert_fail(
+        //     b"sizeof (AlphaChar) == 4\0" as *const u8 as *const libc::c_char,
+        //     b"trietool.c\0" as *const u8 as *const libc::c_char,
+        //     154 as libc::c_int as libc::c_uint,
+        //     (*::core::mem::transmute::<&[u8; 69], &[libc::c_char; 69]>(
+        //         b"size_t conv_from_alpha(ProgEnv *, const AlphaChar *, char *, size_t)\0",
+        //     ))
+        //     .as_ptr(),
+        // );
     }
     'c_3143: {
         if ::core::mem::size_of::<AlphaChar>() as libc::c_ulong == 4 as libc::c_int as libc::c_ulong
         {
         } else {
-            __assert_fail(
-                b"sizeof (AlphaChar) == 4\0" as *const u8 as *const libc::c_char,
-                b"trietool.c\0" as *const u8 as *const libc::c_char,
-                154 as libc::c_int as libc::c_uint,
-                (*::core::mem::transmute::<&[u8; 69], &[libc::c_char; 69]>(
-                    b"size_t conv_from_alpha(ProgEnv *, const AlphaChar *, char *, size_t)\0",
-                ))
-                .as_ptr(),
-            );
+            panic!("sizeof (AlphaChar) == 4");
+            // __assert_fail(
+            //     b"sizeof (AlphaChar) == 4\0" as *const u8 as *const libc::c_char,
+            //     b"trietool.c\0" as *const u8 as *const libc::c_char,
+            //     154 as libc::c_int as libc::c_uint,
+            //     (*::core::mem::transmute::<&[u8; 69], &[libc::c_char; 69]>(
+            //         b"size_t conv_from_alpha(ProgEnv *, const AlphaChar *, char *, size_t)\0",
+            //     ))
+            //     .as_ptr(),
+            // );
         }
     };
     res = 0 as libc::c_int as size_t;

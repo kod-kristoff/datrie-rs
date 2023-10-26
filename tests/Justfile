@@ -1,6 +1,34 @@
-test_null_trie:
-	gcc test_null_trie.c utils.c -o test_null_trie -I.. -ldatrie -L/data/data/com.termux/files/usr/lib -L../target/debug -llog -lrt 
-	./test_null_trie
+TARGET_DEBUG_DIR := "../target/debug"
 
-check: test_null_trie
-	echo "tests:check"
+build_run_test source target:
+	cc {{source}} utils.c -o {{target}} -Wall -Wextra -g \
+		-L{{TARGET_DEBUG_DIR}} -I.. -ldatrie
+	LD_LIBRARY_PATH={{TARGET_DEBUG_DIR}} ./{{target}}
+	@rm {{target}}
+
+
+check: check_test_null_trie check_test_walk check_test_iterator check_test_store_retrieve check_test_file check_test_serialization check_test_nonalpha check_test_term_state check_test_byte_alpha check_test_byte_list
+	@echo "tests:check: all passed!"
+
+test_null_trie: (build_run_test 'test_null_trie.c' 'test_null_trie')
+
+check_test_walk: (build_run_test 'test_walk.c' 'test_walk')
+
+check_test_iterator: (build_run_test 'test_iterator.c' 'test_iterator')
+
+check_test_store_retrieve: (build_run_test 'test_store-retrieve.c' 'test_store_retrieve')
+
+check_test_file: (build_run_test 'test_file.c' 'test_file')
+
+check_test_serialization: (build_run_test 'test_serialization.c' 'test_serialization')
+
+check_test_nonalpha: (build_run_test 'test_nonalpha.c' 'test_nonalpha')
+
+check_test_null_trie: (build_run_test 'test_null_trie.c' 'test_null_trie')
+
+check_test_term_state: (build_run_test 'test_term_state.c' 'test_term_state')
+
+check_test_byte_alpha: (build_run_test 'test_byte_alpha.c' 'test_byte_alpha')
+
+check_test_byte_list: (build_run_test 'test_byte_list.c' 'test_byte_list')
+
