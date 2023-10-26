@@ -1,0 +1,6 @@
+test_null_trie:
+	gcc test_null_trie.c utils.c -o test_null_trie -I.. -ldatrie -L/data/data/com.termux/files/usr/lib -L../target/debug -llog -lrt 
+	./test_null_trie
+
+check: test_null_trie
+	echo "tests:check"
