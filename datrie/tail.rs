@@ -1,21 +1,15 @@
 use ::libc;
+
+use super::fileutils::{_IO_codecvt, _IO_marker, _IO_wide_data};
 extern "C" {
-    pub type _IO_wide_data;
-    pub type _IO_codecvt;
-    pub type _IO_marker;
-    fn memcpy(
-        _: *mut libc::c_void,
-        _: *const libc::c_void,
-        _: libc::c_ulong,
-    ) -> *mut libc::c_void;
+    // pub type _IO_wide_data;
+    // pub type _IO_codecvt;
+    // pub type _IO_marker;
+    fn memcpy(_: *mut libc::c_void, _: *const libc::c_void, _: libc::c_ulong) -> *mut libc::c_void;
     fn malloc(_: libc::c_ulong) -> *mut libc::c_void;
     fn realloc(_: *mut libc::c_void, _: libc::c_ulong) -> *mut libc::c_void;
     fn free(_: *mut libc::c_void);
-    fn fseek(
-        __stream: *mut FILE,
-        __off: libc::c_long,
-        __whence: libc::c_int,
-    ) -> libc::c_int;
+    fn fseek(__stream: *mut FILE, __off: libc::c_long, __whence: libc::c_int) -> libc::c_int;
     fn ftell(__stream: *mut FILE) -> libc::c_long;
     fn serialize_int32_be_incr(buff: *mut *mut uint8, val: int32);
     fn file_read_int32(file: *mut FILE, o_val: *mut int32) -> Bool;
@@ -23,16 +17,8 @@ extern "C" {
     fn serialize_int16_be_incr(buff: *mut *mut uint8, val: int16);
     fn file_read_int16(file: *mut FILE, o_val: *mut int16) -> Bool;
     fn file_write_int16(file: *mut FILE, val: int16) -> Bool;
-    fn file_read_chars(
-        file: *mut FILE,
-        buff: *mut libc::c_char,
-        len: libc::c_int,
-    ) -> Bool;
-    fn file_write_chars(
-        file: *mut FILE,
-        buff: *const libc::c_char,
-        len: libc::c_int,
-    ) -> Bool;
+    fn file_read_chars(file: *mut FILE, buff: *mut libc::c_char, len: libc::c_int) -> Bool;
+    fn file_write_chars(file: *mut FILE, buff: *const libc::c_char, len: libc::c_int) -> Bool;
     fn trie_char_strlen(str: *const TrieChar) -> size_t;
     fn trie_char_strsize(str: *const TrieChar) -> size_t;
     fn trie_char_strdup(str: *const TrieChar) -> *mut TrieChar;
@@ -130,16 +116,11 @@ pub unsafe extern "C" fn tail_fread(mut file: *mut FILE) -> *mut Tail {
             {
                 if !((*t).num_tails as libc::c_ulong
                     > (18446744073709551615 as libc::c_ulong)
-                        .wrapping_div(
-                            ::core::mem::size_of::<TailBlock>() as libc::c_ulong,
-                        ))
+                        .wrapping_div(::core::mem::size_of::<TailBlock>() as libc::c_ulong))
                 {
-                    (*t)
-                        .tails = malloc(
+                    (*t).tails = malloc(
                         ((*t).num_tails as libc::c_ulong)
-                            .wrapping_mul(
-                                ::core::mem::size_of::<TailBlock>() as libc::c_ulong,
-                            ),
+                            .wrapping_mul(::core::mem::size_of::<TailBlock>() as libc::c_ulong),
                     ) as *mut TailBlock;
                     if !(((*t).tails).is_null() as libc::c_int as libc::c_long != 0) {
                         i = 0 as libc::c_int;
@@ -152,23 +133,25 @@ pub unsafe extern "C" fn tail_fread(mut file: *mut FILE) -> *mut Tail {
                             if file_read_int32(
                                 file,
                                 &mut (*((*t).tails).offset(i as isize)).next_free,
-                            ) as u64 == 0
+                            ) as u64
+                                == 0
                                 || file_read_int32(
                                     file,
                                     &mut (*((*t).tails).offset(i as isize)).data,
-                                ) as u64 == 0
+                                ) as u64
+                                    == 0
                                 || file_read_int16(file, &mut length) as u64 == 0
                             {
                                 current_block = 1386273818809128762;
                                 break;
                             }
-                            let ref mut fresh0 = (*((*t).tails).offset(i as isize))
-                                .suffix;
-                            *fresh0 = malloc(
-                                (length as libc::c_int + 1 as libc::c_int) as libc::c_ulong,
-                            ) as *mut TrieChar;
-                            if ((*((*t).tails).offset(i as isize)).suffix).is_null()
-                                as libc::c_int as libc::c_long != 0
+                            let ref mut fresh0 = (*((*t).tails).offset(i as isize)).suffix;
+                            *fresh0 =
+                                malloc((length as libc::c_int + 1 as libc::c_int) as libc::c_ulong)
+                                    as *mut TrieChar;
+                            if ((*((*t).tails).offset(i as isize)).suffix).is_null() as libc::c_int
+                                as libc::c_long
+                                != 0
                             {
                                 current_block = 1386273818809128762;
                                 break;
@@ -176,10 +159,10 @@ pub unsafe extern "C" fn tail_fread(mut file: *mut FILE) -> *mut Tail {
                             if length as libc::c_int > 0 as libc::c_int {
                                 if file_read_chars(
                                     file,
-                                    (*((*t).tails).offset(i as isize)).suffix
-                                        as *mut libc::c_char,
+                                    (*((*t).tails).offset(i as isize)).suffix as *mut libc::c_char,
                                     length as libc::c_int,
-                                ) as u64 == 0
+                                ) as u64
+                                    == 0
                                 {
                                     free(
                                         (*((*t).tails).offset(i as isize)).suffix
@@ -189,8 +172,8 @@ pub unsafe extern "C" fn tail_fread(mut file: *mut FILE) -> *mut Tail {
                                     break;
                                 }
                             }
-                            *((*((*t).tails).offset(i as isize)).suffix)
-                                .offset(length as isize) = '\0' as i32 as TrieChar;
+                            *((*((*t).tails).offset(i as isize)).suffix).offset(length as isize) =
+                                '\0' as i32 as TrieChar;
                             i += 1;
                             i;
                         }
@@ -233,10 +216,7 @@ pub unsafe extern "C" fn tail_free(mut t: *mut Tail) {
     free(t as *mut libc::c_void);
 }
 #[no_mangle]
-pub unsafe extern "C" fn tail_fwrite(
-    mut t: *const Tail,
-    mut file: *mut FILE,
-) -> libc::c_int {
+pub unsafe extern "C" fn tail_fwrite(mut t: *const Tail, mut file: *mut FILE) -> libc::c_int {
     let mut i: TrieIndex = 0;
     if file_write_int32(file, 0xdffcdffc as libc::c_uint as int32) as u64 == 0
         || file_write_int32(file, (*t).first_free) as u64 == 0
@@ -247,10 +227,8 @@ pub unsafe extern "C" fn tail_fwrite(
     i = 0 as libc::c_int;
     while i < (*t).num_tails {
         let mut length: int16 = 0;
-        if file_write_int32(file, (*((*t).tails).offset(i as isize)).next_free) as u64
-            == 0
-            || file_write_int32(file, (*((*t).tails).offset(i as isize)).data) as u64
-                == 0
+        if file_write_int32(file, (*((*t).tails).offset(i as isize)).next_free) as u64 == 0
+            || file_write_int32(file, (*((*t).tails).offset(i as isize)).data) as u64 == 0
         {
             return -(1 as libc::c_int);
         }
@@ -267,7 +245,8 @@ pub unsafe extern "C" fn tail_fwrite(
                 file,
                 (*((*t).tails).offset(i as isize)).suffix as *mut libc::c_char,
                 length as libc::c_int,
-            ) as u64 == 0
+            ) as u64
+                == 0
         {
             return -(1 as libc::c_int);
         }
@@ -284,19 +263,17 @@ pub unsafe extern "C" fn tail_get_serialized_size(mut t: *const Tail) -> size_t 
     let mut dynamic_count: size_t = 0 as libc::c_uint as size_t;
     if (*t).num_tails > 0 as libc::c_int {
         let mut i: TrieIndex = 0 as libc::c_int;
-        dynamic_count = (dynamic_count as libc::c_ulong)
-            .wrapping_add(
-                (::core::mem::size_of::<TrieIndex>() as libc::c_ulong)
-                    .wrapping_add(::core::mem::size_of::<TrieData>() as libc::c_ulong)
-                    .wrapping_add(::core::mem::size_of::<int16>() as libc::c_ulong)
-                    .wrapping_mul((*t).num_tails as libc::c_ulong),
-            ) as size_t as size_t;
+        dynamic_count = (dynamic_count as libc::c_ulong).wrapping_add(
+            (::core::mem::size_of::<TrieIndex>() as libc::c_ulong)
+                .wrapping_add(::core::mem::size_of::<TrieData>() as libc::c_ulong)
+                .wrapping_add(::core::mem::size_of::<int16>() as libc::c_ulong)
+                .wrapping_mul((*t).num_tails as libc::c_ulong),
+        ) as size_t as size_t;
         while i < (*t).num_tails {
             if !((*((*t).tails).offset(i as isize)).suffix).is_null() {
                 dynamic_count = (dynamic_count as libc::c_ulong)
-                    .wrapping_add(
-                        trie_char_strsize((*((*t).tails).offset(i as isize)).suffix),
-                    ) as size_t as size_t;
+                    .wrapping_add(trie_char_strsize((*((*t).tails).offset(i as isize)).suffix))
+                    as size_t as size_t;
             }
             i += 1;
             i;
@@ -440,10 +417,7 @@ unsafe extern "C" fn tail_free_block(mut t: *mut Tail, mut block: TrieIndex) {
     };
 }
 #[no_mangle]
-pub unsafe extern "C" fn tail_get_data(
-    mut t: *const Tail,
-    mut index: TrieIndex,
-) -> TrieData {
+pub unsafe extern "C" fn tail_get_data(mut t: *const Tail, mut index: TrieIndex) -> TrieData {
     index -= 1 as libc::c_int;
     return if (index < (*t).num_tails) as libc::c_int as libc::c_long != 0 {
         (*((*t).tails).offset(index as isize)).data
@@ -486,9 +460,7 @@ pub unsafe extern "C" fn tail_walk_str(
     i = 0 as libc::c_int;
     j = *suffix_idx;
     while i < len {
-        if *str.offset(i as isize) as libc::c_int
-            != *suffix.offset(j as isize) as libc::c_int
-        {
+        if *str.offset(i as isize) as libc::c_int != *suffix.offset(j as isize) as libc::c_int {
             break;
         }
         i += 1;

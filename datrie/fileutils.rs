@@ -1,8 +1,8 @@
 use ::libc;
 extern "C" {
-    pub type _IO_wide_data;
-    pub type _IO_codecvt;
-    pub type _IO_marker;
+    // pub type _IO_wide_data;
+    // pub type _IO_codecvt;
+    // pub type _IO_marker;
     fn fread(
         _: *mut libc::c_void,
         _: libc::c_ulong,
@@ -52,6 +52,22 @@ pub struct _IO_FILE {
     pub _mode: libc::c_int,
     pub _unused2: [libc::c_char; 20],
 }
+#[repr(C)]
+pub struct _IO_marker {
+    pub _next: *mut _IO_marker,
+    pub _sbuf: *mut _IO_FILE,
+    pub _pos: i32,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct _IO_codecvt {
+    _unused: [u8; 0],
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct _IO_wide_data {
+    _unused: [u8; 0],
+}
 pub type _IO_lock_t = ();
 pub type FILE = _IO_FILE;
 pub type Bool = libc::c_uint;
@@ -68,10 +84,7 @@ unsafe extern "C" fn parse_int32_be(mut buff: *const uint8) -> int32 {
         | *buff.offset(3 as libc::c_int as isize) as libc::c_int;
 }
 #[no_mangle]
-pub unsafe extern "C" fn file_read_int32(
-    mut file: *mut FILE,
-    mut o_val: *mut int32,
-) -> Bool {
+pub unsafe extern "C" fn file_read_int32(mut file: *mut FILE, mut o_val: *mut int32) -> Bool {
     let mut buff: [uint8; 4] = [0; 4];
     if fread(
         buff.as_mut_ptr() as *mut libc::c_void,
@@ -86,25 +99,16 @@ pub unsafe extern "C" fn file_read_int32(
     return DA_FALSE;
 }
 unsafe extern "C" fn serialize_int32_be(mut buff: *mut uint8, mut val: int32) {
-    *buff
-        .offset(
-            0 as libc::c_int as isize,
-        ) = (val >> 24 as libc::c_int & 0xff as libc::c_int) as uint8;
-    *buff
-        .offset(
-            1 as libc::c_int as isize,
-        ) = (val >> 16 as libc::c_int & 0xff as libc::c_int) as uint8;
-    *buff
-        .offset(
-            2 as libc::c_int as isize,
-        ) = (val >> 8 as libc::c_int & 0xff as libc::c_int) as uint8;
+    *buff.offset(0 as libc::c_int as isize) =
+        (val >> 24 as libc::c_int & 0xff as libc::c_int) as uint8;
+    *buff.offset(1 as libc::c_int as isize) =
+        (val >> 16 as libc::c_int & 0xff as libc::c_int) as uint8;
+    *buff.offset(2 as libc::c_int as isize) =
+        (val >> 8 as libc::c_int & 0xff as libc::c_int) as uint8;
     *buff.offset(3 as libc::c_int as isize) = (val & 0xff as libc::c_int) as uint8;
 }
 #[no_mangle]
-pub unsafe extern "C" fn serialize_int32_be_incr(
-    mut buff: *mut *mut uint8,
-    mut val: int32,
-) {
+pub unsafe extern "C" fn serialize_int32_be_incr(mut buff: *mut *mut uint8, mut val: int32) {
     serialize_int32_be(*buff, val);
     *buff = (*buff).offset(4 as libc::c_int as isize);
 }
@@ -124,10 +128,7 @@ unsafe extern "C" fn parse_int16_be(mut buff: *const uint8) -> int16 {
         | *buff.offset(1 as libc::c_int as isize) as libc::c_int) as int16;
 }
 #[no_mangle]
-pub unsafe extern "C" fn file_read_int16(
-    mut file: *mut FILE,
-    mut o_val: *mut int16,
-) -> Bool {
+pub unsafe extern "C" fn file_read_int16(mut file: *mut FILE, mut o_val: *mut int16) -> Bool {
     let mut buff: [uint8; 2] = [0; 2];
     if fread(
         buff.as_mut_ptr() as *mut libc::c_void,
@@ -142,20 +143,11 @@ pub unsafe extern "C" fn file_read_int16(
     return DA_FALSE;
 }
 unsafe extern "C" fn serialize_int16_be(mut buff: *mut uint8, mut val: int16) {
-    *buff
-        .offset(
-            0 as libc::c_int as isize,
-        ) = (val as libc::c_int >> 8 as libc::c_int) as uint8;
-    *buff
-        .offset(
-            1 as libc::c_int as isize,
-        ) = (val as libc::c_int & 0xff as libc::c_int) as uint8;
+    *buff.offset(0 as libc::c_int as isize) = (val as libc::c_int >> 8 as libc::c_int) as uint8;
+    *buff.offset(1 as libc::c_int as isize) = (val as libc::c_int & 0xff as libc::c_int) as uint8;
 }
 #[no_mangle]
-pub unsafe extern "C" fn serialize_int16_be_incr(
-    mut buff: *mut *mut uint8,
-    mut val: int16,
-) {
+pub unsafe extern "C" fn serialize_int16_be_incr(mut buff: *mut *mut uint8, mut val: int16) {
     serialize_int16_be(*buff, val);
     *buff = (*buff).offset(2 as libc::c_int as isize);
 }
@@ -171,10 +163,7 @@ pub unsafe extern "C" fn file_write_int16(mut file: *mut FILE, mut val: int16) -
     ) == 1 as libc::c_int as libc::c_ulong) as libc::c_int as Bool;
 }
 #[no_mangle]
-pub unsafe extern "C" fn file_read_int8(
-    mut file: *mut FILE,
-    mut o_val: *mut int8,
-) -> Bool {
+pub unsafe extern "C" fn file_read_int8(mut file: *mut FILE, mut o_val: *mut int8) -> Bool {
     return (fread(
         o_val as *mut libc::c_void,
         ::core::mem::size_of::<int8>() as libc::c_ulong,

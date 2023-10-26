@@ -1,23 +1,21 @@
 use ::libc;
+
+use crate::datrie::{
+    alpha_map::_AlphaMap,
+    fileutils::{_IO_codecvt, _IO_marker, _IO_wide_data},
+    trie::_Trie,
+};
 extern "C" {
-    pub type _IO_wide_data;
-    pub type _IO_codecvt;
-    pub type _IO_marker;
-    pub type _AlphaMap;
-    pub type _Trie;
-    fn memcpy(
-        _: *mut libc::c_void,
-        _: *const libc::c_void,
-        _: libc::c_ulong,
-    ) -> *mut libc::c_void;
+    // pub type _IO_wide_data;
+    // pub type _IO_codecvt;
+    // pub type _IO_marker;
+    // pub type _AlphaMap;
+    // pub type _Trie;
+    fn memcpy(_: *mut libc::c_void, _: *const libc::c_void, _: libc::c_ulong) -> *mut libc::c_void;
     fn strcmp(_: *const libc::c_char, _: *const libc::c_char) -> libc::c_int;
     fn strchr(_: *const libc::c_char, _: libc::c_int) -> *mut libc::c_char;
     fn strlen(_: *const libc::c_char) -> libc::c_ulong;
-    fn strtol(
-        _: *const libc::c_char,
-        _: *mut *mut libc::c_char,
-        _: libc::c_int,
-    ) -> libc::c_long;
+    fn strtol(_: *const libc::c_char, _: *mut *mut libc::c_char, _: libc::c_int) -> libc::c_long;
     fn malloc(_: libc::c_ulong) -> *mut libc::c_void;
     fn free(_: *mut libc::c_void);
     fn exit(_: libc::c_int) -> !;
@@ -28,22 +26,12 @@ extern "C" {
     fn printf(_: *const libc::c_char, _: ...) -> libc::c_int;
     fn sprintf(_: *mut libc::c_char, _: *const libc::c_char, _: ...) -> libc::c_int;
     fn sscanf(_: *const libc::c_char, _: *const libc::c_char, _: ...) -> libc::c_int;
-    fn fgets(
-        __s: *mut libc::c_char,
-        __n: libc::c_int,
-        __stream: *mut FILE,
-    ) -> *mut libc::c_char;
+    fn fgets(__s: *mut libc::c_char, __n: libc::c_int, __stream: *mut FILE) -> *mut libc::c_char;
     fn __ctype_b_loc() -> *mut *const libc::c_ushort;
-    fn setlocale(
-        __category: libc::c_int,
-        __locale: *const libc::c_char,
-    ) -> *mut libc::c_char;
+    fn setlocale(__category: libc::c_int, __locale: *const libc::c_char) -> *mut libc::c_char;
     fn locale_charset() -> *const libc::c_char;
     fn iconv_close(__cd: iconv_t) -> libc::c_int;
-    fn iconv_open(
-        __tocode: *const libc::c_char,
-        __fromcode: *const libc::c_char,
-    ) -> iconv_t;
+    fn iconv_open(__tocode: *const libc::c_char, __fromcode: *const libc::c_char) -> iconv_t;
     fn iconv(
         __cd: iconv_t,
         __inbuf: *mut *mut libc::c_char,
@@ -69,11 +57,7 @@ extern "C" {
     fn trie_free(trie: *mut Trie);
     fn trie_save(trie: *mut Trie, path: *const libc::c_char) -> libc::c_int;
     fn trie_is_dirty(trie: *const Trie) -> Bool;
-    fn trie_retrieve(
-        trie: *const Trie,
-        key: *const AlphaChar,
-        o_data: *mut TrieData,
-    ) -> Bool;
+    fn trie_retrieve(trie: *const Trie, key: *const AlphaChar, o_data: *mut TrieData) -> Bool;
     fn trie_store(trie: *mut Trie, key: *const AlphaChar, data: TrieData) -> Bool;
     fn trie_delete(trie: *mut Trie, key: *const AlphaChar) -> Bool;
     fn trie_enumerate(
@@ -144,9 +128,8 @@ pub type AlphaChar = uint32;
 pub type TrieData = int32;
 pub type AlphaMap = _AlphaMap;
 pub type Trie = _Trie;
-pub type TrieEnumFunc = Option::<
-    unsafe extern "C" fn(*const AlphaChar, TrieData, *mut libc::c_void) -> Bool,
->;
+pub type TrieEnumFunc =
+    Option<unsafe extern "C" fn(*const AlphaChar, TrieData, *mut libc::c_void) -> Bool>;
 #[derive(Copy, Clone)]
 #[repr(C)]
 pub struct ProgEnv {
@@ -164,10 +147,7 @@ unsafe extern "C" fn atoi(mut __nptr: *const libc::c_char) -> libc::c_int {
         10 as libc::c_int,
     ) as libc::c_int;
 }
-unsafe fn main_0(
-    mut argc: libc::c_int,
-    mut argv: *mut *mut libc::c_char,
-) -> libc::c_int {
+unsafe fn main_0(mut argc: libc::c_int, mut argv: *mut *mut libc::c_char) -> libc::c_int {
     let mut i: libc::c_int = 0;
     let mut env: ProgEnv = ProgEnv {
         path: 0 as *const libc::c_char,
@@ -202,13 +182,11 @@ unsafe extern "C" fn init_conv(mut env: *mut ProgEnv) {
     prev_locale = setlocale(0 as libc::c_int, b"\0" as *const u8 as *const libc::c_char);
     locale_codeset = locale_charset();
     setlocale(0 as libc::c_int, prev_locale);
-    (*env)
-        .to_alpha_conv = iconv_open(
+    (*env).to_alpha_conv = iconv_open(
         b"UCS-4LE\0" as *const u8 as *const libc::c_char,
         locale_codeset,
     );
-    (*env)
-        .from_alpha_conv = iconv_open(
+    (*env).from_alpha_conv = iconv_open(
         locale_codeset,
         b"UCS-4LE\0" as *const u8 as *const libc::c_char,
     );
@@ -222,39 +200,34 @@ unsafe extern "C" fn conv_to_alpha(
     let mut in_p: *mut libc::c_char = in_0 as *mut libc::c_char;
     let mut out_p: *mut libc::c_char = out as *mut libc::c_char;
     let mut in_left: size_t = strlen(in_0);
-    let mut out_left: size_t = out_size
-        .wrapping_mul(::core::mem::size_of::<AlphaChar>() as libc::c_ulong);
+    let mut out_left: size_t =
+        out_size.wrapping_mul(::core::mem::size_of::<AlphaChar>() as libc::c_ulong);
     let mut res: size_t = 0;
     let mut byte_p: *const libc::c_uchar = 0 as *const libc::c_uchar;
-    if ::core::mem::size_of::<AlphaChar>() as libc::c_ulong
-        == 4 as libc::c_int as libc::c_ulong
-    {} else {
+    if ::core::mem::size_of::<AlphaChar>() as libc::c_ulong == 4 as libc::c_int as libc::c_ulong {
+    } else {
         __assert_fail(
             b"sizeof (AlphaChar) == 4\0" as *const u8 as *const libc::c_char,
             b"trietool.c\0" as *const u8 as *const libc::c_char,
             121 as libc::c_int as libc::c_uint,
-            (*::core::mem::transmute::<
-                &[u8; 67],
-                &[libc::c_char; 67],
-            >(b"size_t conv_to_alpha(ProgEnv *, const char *, AlphaChar *, size_t)\0"))
-                .as_ptr(),
+            (*::core::mem::transmute::<&[u8; 67], &[libc::c_char; 67]>(
+                b"size_t conv_to_alpha(ProgEnv *, const char *, AlphaChar *, size_t)\0",
+            ))
+            .as_ptr(),
         );
     }
     'c_2942: {
-        if ::core::mem::size_of::<AlphaChar>() as libc::c_ulong
-            == 4 as libc::c_int as libc::c_ulong
-        {} else {
+        if ::core::mem::size_of::<AlphaChar>() as libc::c_ulong == 4 as libc::c_int as libc::c_ulong
+        {
+        } else {
             __assert_fail(
                 b"sizeof (AlphaChar) == 4\0" as *const u8 as *const libc::c_char,
                 b"trietool.c\0" as *const u8 as *const libc::c_char,
                 121 as libc::c_int as libc::c_uint,
-                (*::core::mem::transmute::<
-                    &[u8; 67],
-                    &[libc::c_char; 67],
-                >(
+                (*::core::mem::transmute::<&[u8; 67], &[libc::c_char; 67]>(
                     b"size_t conv_to_alpha(ProgEnv *, const char *, AlphaChar *, size_t)\0",
                 ))
-                    .as_ptr(),
+                .as_ptr(),
             );
         }
     };
@@ -276,16 +249,11 @@ unsafe extern "C" fn conv_to_alpha(
     {
         let fresh1 = res;
         res = res.wrapping_add(1);
-        *out
-            .offset(
-                fresh1 as isize,
-            ) = (*byte_p.offset(0 as libc::c_int as isize) as libc::c_int
-            | (*byte_p.offset(1 as libc::c_int as isize) as libc::c_int)
-                << 8 as libc::c_int
-            | (*byte_p.offset(2 as libc::c_int as isize) as libc::c_int)
-                << 16 as libc::c_int
-            | (*byte_p.offset(3 as libc::c_int as isize) as libc::c_int)
-                << 24 as libc::c_int) as AlphaChar;
+        *out.offset(fresh1 as isize) = (*byte_p.offset(0 as libc::c_int as isize) as libc::c_int
+            | (*byte_p.offset(1 as libc::c_int as isize) as libc::c_int) << 8 as libc::c_int
+            | (*byte_p.offset(2 as libc::c_int as isize) as libc::c_int) << 16 as libc::c_int
+            | (*byte_p.offset(3 as libc::c_int as isize) as libc::c_int) << 24 as libc::c_int)
+            as AlphaChar;
         byte_p = byte_p.offset(4 as libc::c_int as isize);
     }
     if res < out_size {
@@ -302,53 +270,47 @@ unsafe extern "C" fn conv_from_alpha(
     let mut in_left: size_t = (alpha_char_strlen(in_0) as libc::c_ulong)
         .wrapping_mul(::core::mem::size_of::<AlphaChar>() as libc::c_ulong);
     let mut res: size_t = 0;
-    if ::core::mem::size_of::<AlphaChar>() as libc::c_ulong
-        == 4 as libc::c_int as libc::c_ulong
-    {} else {
+    if ::core::mem::size_of::<AlphaChar>() as libc::c_ulong == 4 as libc::c_int as libc::c_ulong {
+    } else {
         __assert_fail(
             b"sizeof (AlphaChar) == 4\0" as *const u8 as *const libc::c_char,
             b"trietool.c\0" as *const u8 as *const libc::c_char,
             154 as libc::c_int as libc::c_uint,
-            (*::core::mem::transmute::<
-                &[u8; 69],
-                &[libc::c_char; 69],
-            >(b"size_t conv_from_alpha(ProgEnv *, const AlphaChar *, char *, size_t)\0"))
-                .as_ptr(),
+            (*::core::mem::transmute::<&[u8; 69], &[libc::c_char; 69]>(
+                b"size_t conv_from_alpha(ProgEnv *, const AlphaChar *, char *, size_t)\0",
+            ))
+            .as_ptr(),
         );
     }
     'c_3143: {
-        if ::core::mem::size_of::<AlphaChar>() as libc::c_ulong
-            == 4 as libc::c_int as libc::c_ulong
-        {} else {
+        if ::core::mem::size_of::<AlphaChar>() as libc::c_ulong == 4 as libc::c_int as libc::c_ulong
+        {
+        } else {
             __assert_fail(
                 b"sizeof (AlphaChar) == 4\0" as *const u8 as *const libc::c_char,
                 b"trietool.c\0" as *const u8 as *const libc::c_char,
                 154 as libc::c_int as libc::c_uint,
-                (*::core::mem::transmute::<
-                    &[u8; 69],
-                    &[libc::c_char; 69],
-                >(
+                (*::core::mem::transmute::<&[u8; 69], &[libc::c_char; 69]>(
                     b"size_t conv_from_alpha(ProgEnv *, const AlphaChar *, char *, size_t)\0",
                 ))
-                    .as_ptr(),
+                .as_ptr(),
             );
         }
     };
     res = 0 as libc::c_int as size_t;
     while *in_0.offset(res as isize) != 0 {
         let mut b: [libc::c_uchar; 4] = [0; 4];
-        b[0 as libc::c_int
-            as usize] = (*in_0.offset(res as isize)
-            & 0xff as libc::c_int as libc::c_uint) as libc::c_uchar;
-        b[1 as libc::c_int
-            as usize] = (*in_0.offset(res as isize) >> 8 as libc::c_int
-            & 0xff as libc::c_int as libc::c_uint) as libc::c_uchar;
-        b[2 as libc::c_int
-            as usize] = (*in_0.offset(res as isize) >> 16 as libc::c_int
-            & 0xff as libc::c_int as libc::c_uint) as libc::c_uchar;
-        b[3 as libc::c_int
-            as usize] = (*in_0.offset(res as isize) >> 24 as libc::c_int
-            & 0xff as libc::c_int as libc::c_uint) as libc::c_uchar;
+        b[0 as libc::c_int as usize] =
+            (*in_0.offset(res as isize) & 0xff as libc::c_int as libc::c_uint) as libc::c_uchar;
+        b[1 as libc::c_int as usize] = (*in_0.offset(res as isize) >> 8 as libc::c_int
+            & 0xff as libc::c_int as libc::c_uint)
+            as libc::c_uchar;
+        b[2 as libc::c_int as usize] = (*in_0.offset(res as isize) >> 16 as libc::c_int
+            & 0xff as libc::c_int as libc::c_uint)
+            as libc::c_uchar;
+        b[3 as libc::c_int as usize] = (*in_0.offset(res as isize) >> 24 as libc::c_int
+            & 0xff as libc::c_int as libc::c_uint)
+            as libc::c_uchar;
         memcpy(
             &*in_0.offset(res as isize) as *const AlphaChar as *mut libc::c_char
                 as *mut libc::c_void,
@@ -380,9 +342,10 @@ unsafe extern "C" fn full_path(
     let mut full_size: libc::c_int = (strlen(path))
         .wrapping_add(strlen(name))
         .wrapping_add(strlen(ext))
-        .wrapping_add(2 as libc::c_int as libc::c_ulong) as libc::c_int;
-    let mut full_path_buff: *mut libc::c_char = malloc(full_size as libc::c_ulong)
-        as *mut libc::c_char;
+        .wrapping_add(2 as libc::c_int as libc::c_ulong)
+        as libc::c_int;
+    let mut full_path_buff: *mut libc::c_char =
+        malloc(full_size as libc::c_ulong) as *mut libc::c_char;
     sprintf(
         full_path_buff,
         b"%s/%s%s\0" as *const u8 as *const libc::c_char,
@@ -414,8 +377,7 @@ unsafe extern "C" fn prepare_trie(mut env: *mut ProgEnv) -> libc::c_int {
         if sbm.is_null() {
             fprintf(
                 stderr,
-                b"Cannot open alphabet map file %s\n\0" as *const u8
-                    as *const libc::c_char,
+                b"Cannot open alphabet map file %s\n\0" as *const u8 as *const libc::c_char,
                 path_name,
             );
             free(path_name as *mut libc::c_void);
@@ -425,11 +387,10 @@ unsafe extern "C" fn prepare_trie(mut env: *mut ProgEnv) -> libc::c_int {
         alpha_map = alpha_map_new();
         while !(fgets(
             buff.as_mut_ptr(),
-            ::core::mem::size_of::<[libc::c_char; 256]>() as libc::c_ulong
-                as libc::c_int,
+            ::core::mem::size_of::<[libc::c_char; 256]>() as libc::c_ulong as libc::c_int,
             sbm,
         ))
-            .is_null()
+        .is_null()
         {
             let mut b: libc::c_uint = 0;
             let mut e: libc::c_uint = 0;
@@ -445,8 +406,7 @@ unsafe extern "C" fn prepare_trie(mut env: *mut ProgEnv) -> libc::c_int {
             if b > e {
                 fprintf(
                     stderr,
-                    b"Range begin (%x) > range end (%x)\n\0" as *const u8
-                        as *const libc::c_char,
+                    b"Range begin (%x) > range end (%x)\n\0" as *const u8 as *const libc::c_char,
                     b,
                     e,
                 );
@@ -488,8 +448,7 @@ unsafe extern "C" fn decode_switch(
 ) -> libc::c_int {
     let mut opt_idx: libc::c_int = 0;
     opt_idx = 1 as libc::c_int;
-    while opt_idx < argc && **argv.offset(opt_idx as isize) as libc::c_int == '-' as i32
-    {
+    while opt_idx < argc && **argv.offset(opt_idx as isize) as libc::c_int == '-' as i32 {
         if strcmp(
             *argv.offset(opt_idx as isize),
             b"-h\0" as *const u8 as *const libc::c_char,
@@ -569,8 +528,7 @@ unsafe extern "C" fn decode_command(
         {
             opt_idx += 1;
             opt_idx;
-            opt_idx
-                += command_add_list(argc - opt_idx, argv.offset(opt_idx as isize), env);
+            opt_idx += command_add_list(argc - opt_idx, argv.offset(opt_idx as isize), env);
         } else if strcmp(
             *argv.offset(opt_idx as isize),
             b"delete\0" as *const u8 as *const libc::c_char,
@@ -578,8 +536,7 @@ unsafe extern "C" fn decode_command(
         {
             opt_idx += 1;
             opt_idx;
-            opt_idx
-                += command_delete(argc - opt_idx, argv.offset(opt_idx as isize), env);
+            opt_idx += command_delete(argc - opt_idx, argv.offset(opt_idx as isize), env);
         } else if strcmp(
             *argv.offset(opt_idx as isize),
             b"delete-list\0" as *const u8 as *const libc::c_char,
@@ -587,12 +544,7 @@ unsafe extern "C" fn decode_command(
         {
             opt_idx += 1;
             opt_idx;
-            opt_idx
-                += command_delete_list(
-                    argc - opt_idx,
-                    argv.offset(opt_idx as isize),
-                    env,
-                );
+            opt_idx += command_delete_list(argc - opt_idx, argv.offset(opt_idx as isize), env);
         } else if strcmp(
             *argv.offset(opt_idx as isize),
             b"query\0" as *const u8 as *const libc::c_char,
@@ -653,8 +605,7 @@ unsafe extern "C" fn command_add(
         if trie_store((*env).trie, key_alpha.as_mut_ptr(), data) as u64 == 0 {
             fprintf(
                 stderr,
-                b"Failed to add entry '%s' with data %d\n\0" as *const u8
-                    as *const libc::c_char,
+                b"Failed to add entry '%s' with data %d\n\0" as *const u8 as *const libc::c_char,
                 key,
                 data,
             );
@@ -702,8 +653,7 @@ unsafe extern "C" fn command_add_list(
     if opt_idx >= argc {
         fprintf(
             stderr,
-            b"add-list requires input word list file name\n\0" as *const u8
-                as *const libc::c_char,
+            b"add-list requires input word list file name\n\0" as *const u8 as *const libc::c_char,
         );
         return opt_idx;
     }
@@ -711,10 +661,8 @@ unsafe extern "C" fn command_add_list(
     opt_idx = opt_idx + 1;
     input_name = *argv.offset(fresh5 as isize);
     if !enc_name.is_null() {
-        let mut conv: iconv_t = iconv_open(
-            b"UCS-4LE\0" as *const u8 as *const libc::c_char,
-            enc_name,
-        );
+        let mut conv: iconv_t =
+            iconv_open(b"UCS-4LE\0" as *const u8 as *const libc::c_char, enc_name);
         if -(1 as libc::c_int) as iconv_t == conv {
             fprintf(
                 stderr,
@@ -731,18 +679,16 @@ unsafe extern "C" fn command_add_list(
     if input.is_null() {
         fprintf(
             stderr,
-            b"add-list: Cannot open input file \"%s\"\n\0" as *const u8
-                as *const libc::c_char,
+            b"add-list: Cannot open input file \"%s\"\n\0" as *const u8 as *const libc::c_char,
             input_name,
         );
     } else {
         while !(fgets(
             line.as_mut_ptr(),
-            ::core::mem::size_of::<[libc::c_char; 256]>() as libc::c_ulong
-                as libc::c_int,
+            ::core::mem::size_of::<[libc::c_char; 256]>() as libc::c_ulong as libc::c_int,
             input,
         ))
-            .is_null()
+        .is_null()
         {
             let mut key: *mut libc::c_char = 0 as *mut libc::c_char;
             let mut data: *mut libc::c_char = 0 as *mut libc::c_char;
@@ -756,7 +702,7 @@ unsafe extern "C" fn command_add_list(
                         b"\t,\0" as *const u8 as *const libc::c_char,
                         *data as libc::c_int,
                     ))
-                        .is_null()
+                    .is_null()
                 {
                     data = data.offset(1);
                     data;
@@ -765,10 +711,10 @@ unsafe extern "C" fn command_add_list(
                     let fresh6 = data;
                     data = data.offset(1);
                     *fresh6 = '\0' as i32 as libc::c_char;
-                    while *(*__ctype_b_loc())
-                        .offset(*data as libc::c_uchar as libc::c_int as isize)
+                    while *(*__ctype_b_loc()).offset(*data as libc::c_uchar as libc::c_int as isize)
                         as libc::c_int
-                        & _ISspace as libc::c_int as libc::c_ushort as libc::c_int != 0
+                        & _ISspace as libc::c_int as libc::c_ushort as libc::c_int
+                        != 0
                     {
                         data = data.offset(1);
                         data;
@@ -784,12 +730,9 @@ unsafe extern "C" fn command_add_list(
                     key,
                     key_alpha.as_mut_ptr(),
                     (::core::mem::size_of::<[AlphaChar; 256]>() as libc::c_ulong)
-                        .wrapping_div(
-                            ::core::mem::size_of::<AlphaChar>() as libc::c_ulong,
-                        ),
+                        .wrapping_div(::core::mem::size_of::<AlphaChar>() as libc::c_ulong),
                 );
-                if trie_store((*env).trie, key_alpha.as_mut_ptr(), data_val) as u64 == 0
-                {
+                if trie_store((*env).trie, key_alpha.as_mut_ptr(), data_val) as u64 == 0 {
                     fprintf(
                         stderr,
                         b"Failed to add key '%s' with data %d.\n\0" as *const u8
@@ -885,10 +828,8 @@ unsafe extern "C" fn command_delete_list(
     opt_idx = opt_idx + 1;
     input_name = *argv.offset(fresh8 as isize);
     if !enc_name.is_null() {
-        let mut conv: iconv_t = iconv_open(
-            b"UCS-4LE\0" as *const u8 as *const libc::c_char,
-            enc_name,
-        );
+        let mut conv: iconv_t =
+            iconv_open(b"UCS-4LE\0" as *const u8 as *const libc::c_char, enc_name);
         if -(1 as libc::c_int) as iconv_t == conv {
             fprintf(
                 stderr,
@@ -905,18 +846,16 @@ unsafe extern "C" fn command_delete_list(
     if input.is_null() {
         fprintf(
             stderr,
-            b"delete-list: Cannot open input file \"%s\"\n\0" as *const u8
-                as *const libc::c_char,
+            b"delete-list: Cannot open input file \"%s\"\n\0" as *const u8 as *const libc::c_char,
             input_name,
         );
     } else {
         while !(fgets(
             line.as_mut_ptr(),
-            ::core::mem::size_of::<[libc::c_char; 256]>() as libc::c_ulong
-                as libc::c_int,
+            ::core::mem::size_of::<[libc::c_char; 256]>() as libc::c_ulong as libc::c_int,
             input,
         ))
-            .is_null()
+        .is_null()
         {
             let mut p: *mut libc::c_char = 0 as *mut libc::c_char;
             p = string_trim(line.as_mut_ptr());
@@ -927,15 +866,12 @@ unsafe extern "C" fn command_delete_list(
                     p,
                     key_alpha.as_mut_ptr(),
                     (::core::mem::size_of::<[AlphaChar; 256]>() as libc::c_ulong)
-                        .wrapping_div(
-                            ::core::mem::size_of::<AlphaChar>() as libc::c_ulong,
-                        ),
+                        .wrapping_div(::core::mem::size_of::<AlphaChar>() as libc::c_ulong),
                 );
                 if trie_delete((*env).trie, key_alpha.as_mut_ptr()) as u64 == 0 {
                     fprintf(
                         stderr,
-                        b"No entry '%s'. Not deleted.\n\0" as *const u8
-                            as *const libc::c_char,
+                        b"No entry '%s'. Not deleted.\n\0" as *const u8 as *const libc::c_char,
                         p,
                     );
                 }
@@ -1011,41 +947,33 @@ unsafe extern "C" fn command_list(
         (*env).trie,
         Some(
             list_enum_func
-                as unsafe extern "C" fn(
-                    *const AlphaChar,
-                    TrieData,
-                    *mut libc::c_void,
-                ) -> Bool,
+                as unsafe extern "C" fn(*const AlphaChar, TrieData, *mut libc::c_void) -> Bool,
         ),
         env as *mut libc::c_void,
     );
     return 0 as libc::c_int;
 }
-unsafe extern "C" fn usage(
-    mut prog_name: *const libc::c_char,
-    mut exit_status: libc::c_int,
-) {
+unsafe extern "C" fn usage(mut prog_name: *const libc::c_char, mut exit_status: libc::c_int) {
     printf(
         b"%s - double-array trie manipulator\n\0" as *const u8 as *const libc::c_char,
         prog_name,
     );
     printf(
-        b"Usage: %s [OPTION]... TRIE CMD ARG ...\n\0" as *const u8
-            as *const libc::c_char,
+        b"Usage: %s [OPTION]... TRIE CMD ARG ...\n\0" as *const u8 as *const libc::c_char,
         prog_name,
     );
     printf(b"Options:\n\0" as *const u8 as *const libc::c_char);
     printf(
-        b"  -p, --path DIR           set trie directory to DIR [default=.]\n\0"
-            as *const u8 as *const libc::c_char,
+        b"  -p, --path DIR           set trie directory to DIR [default=.]\n\0" as *const u8
+            as *const libc::c_char,
     );
     printf(
         b"  -h, --help               display this help and exit\n\0" as *const u8
             as *const libc::c_char,
     );
     printf(
-        b"  -V, --version            output version information and exit\n\0"
-            as *const u8 as *const libc::c_char,
+        b"  -V, --version            output version information and exit\n\0" as *const u8
+            as *const libc::c_char,
     );
     printf(b"\n\0" as *const u8 as *const libc::c_char);
     printf(b"Commands:\n\0" as *const u8 as *const libc::c_char);
@@ -1058,35 +986,34 @@ unsafe extern "C" fn usage(
             as *const u8 as *const libc::c_char,
     );
     printf(
-        b"  delete WORD ...\n      Delete WORD from trie\n\0" as *const u8
-            as *const libc::c_char,
+        b"  delete WORD ...\n      Delete WORD from trie\n\0" as *const u8 as *const libc::c_char,
     );
     printf(
         b"  delete-list [OPTION] LISTFILE\n      Delete words listed in LISTFILE from trie\n      Options:\n          -e, --encoding ENC    specify character encoding of LISTFILE\n\0"
             as *const u8 as *const libc::c_char,
     );
     printf(
-        b"  query WORD\n      Query WORD data from trie\n\0" as *const u8
-            as *const libc::c_char,
+        b"  query WORD\n      Query WORD data from trie\n\0" as *const u8 as *const libc::c_char,
     );
-    printf(
-        b"  list\n      List all words in trie\n\0" as *const u8 as *const libc::c_char,
-    );
+    printf(b"  list\n      List all words in trie\n\0" as *const u8 as *const libc::c_char);
     exit(exit_status);
 }
 unsafe extern "C" fn string_trim(mut s: *mut libc::c_char) -> *mut libc::c_char {
     let mut p: *mut libc::c_char = 0 as *mut libc::c_char;
     while *s as libc::c_int != 0
-        && *(*__ctype_b_loc()).offset(*s as libc::c_uchar as libc::c_int as isize)
-            as libc::c_int & _ISspace as libc::c_int as libc::c_ushort as libc::c_int
+        && *(*__ctype_b_loc()).offset(*s as libc::c_uchar as libc::c_int as isize) as libc::c_int
+            & _ISspace as libc::c_int as libc::c_ushort as libc::c_int
             != 0
     {
         s = s.offset(1);
         s;
     }
-    p = s.offset(strlen(s) as isize).offset(-(1 as libc::c_int as isize));
-    while *(*__ctype_b_loc()).offset(*p as libc::c_uchar as libc::c_int as isize)
-        as libc::c_int & _ISspace as libc::c_int as libc::c_ushort as libc::c_int != 0
+    p = s
+        .offset(strlen(s) as isize)
+        .offset(-(1 as libc::c_int as isize));
+    while *(*__ctype_b_loc()).offset(*p as libc::c_uchar as libc::c_int as isize) as libc::c_int
+        & _ISspace as libc::c_int as libc::c_ushort as libc::c_int
+        != 0
     {
         p = p.offset(-1);
         p;
@@ -1096,7 +1023,7 @@ unsafe extern "C" fn string_trim(mut s: *mut libc::c_char) -> *mut libc::c_char 
     return s;
 }
 pub fn main() {
-    let mut args: Vec::<*mut libc::c_char> = Vec::new();
+    let mut args: Vec<*mut libc::c_char> = Vec::new();
     for arg in ::std::env::args() {
         args.push(
             (::std::ffi::CString::new(arg))
@@ -1106,11 +1033,9 @@ pub fn main() {
     }
     args.push(::core::ptr::null_mut());
     unsafe {
-        ::std::process::exit(
-            main_0(
-                (args.len() - 1) as libc::c_int,
-                args.as_mut_ptr() as *mut *mut libc::c_char,
-            ) as i32,
-        )
+        ::std::process::exit(main_0(
+            (args.len() - 1) as libc::c_int,
+            args.as_mut_ptr() as *mut *mut libc::c_char,
+        ) as i32)
     }
 }

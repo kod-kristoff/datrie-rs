@@ -5,20 +5,18 @@
 #![allow(non_upper_case_globals)]
 #![allow(unused_assignments)]
 #![allow(unused_mut)]
-#![feature(extern_types)]
-#![feature(label_break_value)]
-
+// #![feature(extern_types)]
 
 extern crate libc;
 pub mod datrie {
-pub mod alpha_map;
-pub mod darray;
-pub mod dstring;
-pub mod fileutils;
-pub mod tail;
-pub mod trie;
-pub mod trie_string;
+    pub mod alpha_map;
+    pub mod darray;
+    pub mod dstring;
+    pub mod fileutils;
+    pub mod tail;
+    pub mod trie;
+    pub mod trie_string;
 } // mod datrie
 pub mod tools {
-pub mod trietool;
+    pub mod trietool;
 } // mod tools
