@@ -1,12 +1,7 @@
 use ::libc;
-use datrie::{
-    dstring::{
-        dstring_append, dstring_append_char, dstring_append_string, dstring_clear, dstring_copy,
-        dstring_cut_last, dstring_free, dstring_get_val, dstring_get_val_rw, dstring_length,
-        dstring_new, DString,
-    },
-    trie_string::TrieString,
-};
+
+use crate::dstring::*;
+
 extern "C" {
     fn strlen(_: *const libc::c_char) -> libc::c_ulong;
     fn malloc(_: libc::c_ulong) -> *mut libc::c_void;
@@ -16,6 +11,11 @@ pub const DA_TRUE: Bool = 1;
 pub const DA_FALSE: Bool = 0;
 pub type TrieChar = libc::c_uchar;
 pub type size_t = libc::c_ulong;
+#[derive(Copy, Clone)]
+// #[repr(cC)]
+pub struct TrieString {
+    pub ds: DString,
+}
 #[no_mangle]
 pub unsafe extern "C" fn trie_char_strlen(mut str: *const TrieChar) -> size_t {
     let mut len: size_t = 0 as libc::c_int as size_t;

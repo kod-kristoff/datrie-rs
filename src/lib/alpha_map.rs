@@ -1,15 +1,14 @@
 use ::libc;
-use datrie::{
-    alpha_map::{AlphaChar, AlphaMap, AlphaRange},
-    fileutils::{file_read_int32, file_write_int32, serialize_int32_be_incr},
-    trie_string::trie_char_strlen,
-};
 
 extern "C" {
     fn malloc(_: libc::c_ulong) -> *mut libc::c_void;
     fn free(_: *mut libc::c_void);
     fn fseek(__stream: *mut FILE, __off: libc::c_long, __whence: libc::c_int) -> libc::c_int;
     fn ftell(__stream: *mut FILE) -> libc::c_long;
+    fn serialize_int32_be_incr(buff: *mut *mut uint8, val: int32);
+    fn file_read_int32(file: *mut FILE, o_val: *mut int32) -> Bool;
+    fn file_write_int32(file: *mut FILE, val: int32) -> Bool;
+    fn trie_char_strlen(str: *const TrieChar) -> size_t;
 }
 pub type __off_t = libc::c_long;
 pub type __off64_t = libc::c_long;
@@ -22,9 +21,27 @@ pub const DA_FALSE: Bool = 0;
 pub type uint8 = libc::c_uchar;
 pub type uint32 = libc::c_uint;
 pub type int32 = libc::c_int;
-// pub type AlphaChar = uint32;
+pub type AlphaChar = uint32;
 pub type TrieChar = libc::c_uchar;
 pub type TrieIndex = int32;
+#[derive(Copy, Clone)]
+// #[repr(C)]
+pub struct AlphaMap {
+    pub first_range: *mut AlphaRange,
+    pub alpha_begin: AlphaChar,
+    pub alpha_end: AlphaChar,
+    pub alpha_map_sz: libc::c_int,
+    pub alpha_to_trie_map: *mut TrieIndex,
+    pub trie_map_sz: libc::c_int,
+    pub trie_to_alpha_map: *mut AlphaChar,
+}
+#[derive(Copy, Clone)]
+// #[repr(C)]
+pub struct AlphaRange {
+    pub next: *mut AlphaRange,
+    pub begin: AlphaChar,
+    pub end: AlphaChar,
+}
 #[no_mangle]
 pub unsafe extern "C" fn alpha_char_strlen(mut str: *const AlphaChar) -> libc::c_int {
     let mut p: *const AlphaChar = 0 as *const AlphaChar;

@@ -1,8 +1,6 @@
 use ::libc;
-use datrie::{
-    darray::{DACell, DArray, Symbols},
-    trie_string::{trie_string_append_char, trie_string_cut_last, TrieString},
-};
+
+use crate::trie_string::{trie_string_append_char, trie_string_cut_last, TrieString};
 
 extern "C" {
     fn memmove(_: *mut libc::c_void, _: *const libc::c_void, _: libc::c_ulong)
@@ -28,6 +26,24 @@ pub type uint32 = libc::c_uint;
 pub type int32 = libc::c_int;
 pub type TrieChar = libc::c_uchar;
 pub type TrieIndex = int32;
+#[derive(Copy, Clone)]
+// #[repr(C)]
+pub struct Symbols {
+    pub num_symbols: libc::c_short,
+    pub symbols: [TrieChar; 256],
+}
+#[derive(Copy, Clone)]
+// #[repr(C)]
+pub struct DArray {
+    pub num_cells: TrieIndex,
+    pub cells: *mut DACell,
+}
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct DACell {
+    pub base: TrieIndex,
+    pub check: TrieIndex,
+}
 unsafe extern "C" fn symbols_new() -> *mut Symbols {
     let mut syms: *mut Symbols = 0 as *mut Symbols;
     syms = malloc(::core::mem::size_of::<Symbols>() as libc::c_ulong) as *mut Symbols;

@@ -1,27 +1,7 @@
+use crate::{alpha_map::*, darray::*, tail::*};
 use ::libc;
-use datrie::{
-    alpha_map::{
-        alpha_map_char_to_trie, alpha_map_char_to_trie_str, alpha_map_clone, alpha_map_fread_bin,
-        alpha_map_free, alpha_map_fwrite_bin, alpha_map_get_serialized_size,
-        alpha_map_serialize_bin, alpha_map_trie_to_char, AlphaMap,
-    },
-    darray::{
-        da_first_separate, da_fread, da_free, da_fwrite, da_get_base, da_get_check, da_get_root,
-        da_get_serialized_size, da_insert_branch, da_new, da_next_separate, da_output_symbols,
-        da_prune, da_prune_upto, da_serialize, da_set_base, da_walk, symbols_free, symbols_get,
-        symbols_num, Symbols,
-    },
-    tail::{
-        tail_add_suffix, tail_delete, tail_fread, tail_free, tail_fwrite, tail_get_data,
-        tail_get_serialized_size, tail_get_suffix, tail_new, tail_serialize, tail_set_data,
-        tail_set_suffix, tail_walk_char,
-    },
-    trie::{Trie, TrieEnumFunc, TrieIterator, TrieState},
-    trie_string::{
-        trie_char_strlen, trie_string_free, trie_string_get_val, trie_string_length,
-        trie_string_new, TrieString,
-    },
-};
+
+use crate::trie_string::*;
 
 extern "C" {
     fn malloc(_: libc::c_ulong) -> *mut libc::c_void;
@@ -43,7 +23,31 @@ pub type TrieChar = libc::c_uchar;
 pub type TrieIndex = int32;
 pub type TrieData = int32;
 pub type FILE = libc::FILE;
-#[no_mangle]
+#[derive(Copy, Clone)]
+// #[repr(C)]
+pub struct Trie {
+    pub alpha_map: *mut AlphaMap,
+    pub da: *mut DArray,
+    pub tail: *mut Tail,
+    pub is_dirty: Bool,
+}
+pub type TrieEnumFunc =
+    Option<unsafe extern "C" fn(*const AlphaChar, TrieData, *mut libc::c_void) -> Bool>;
+#[derive(Copy, Clone)]
+// #[repr(C)]
+pub struct TrieState {
+    pub trie: *const Trie,
+    pub index: TrieIndex,
+    pub suffix_idx: libc::c_short,
+    pub is_suffix: libc::c_short,
+}
+#[derive(Copy, Clone)]
+// #[repr(C)]
+pub struct TrieIterator {
+    pub root: *const TrieState,
+    pub state: *mut TrieState,
+    pub key: *mut TrieString,
+}
 pub unsafe extern "C" fn trie_new(mut alpha_map: *const AlphaMap) -> *mut Trie {
     let mut trie: *mut Trie = 0 as *mut Trie;
     trie = malloc(::core::mem::size_of::<Trie>() as libc::c_ulong) as *mut Trie;
@@ -67,7 +71,6 @@ pub unsafe extern "C" fn trie_new(mut alpha_map: *const AlphaMap) -> *mut Trie {
     free(trie as *mut libc::c_void);
     return 0 as *mut Trie;
 }
-#[no_mangle]
 pub unsafe extern "C" fn trie_new_from_file(mut path: *const libc::c_char) -> *mut Trie {
     let mut trie: *mut Trie = 0 as *mut Trie;
     let mut trie_file: *mut FILE = 0 as *mut FILE;
@@ -79,7 +82,6 @@ pub unsafe extern "C" fn trie_new_from_file(mut path: *const libc::c_char) -> *m
     fclose(trie_file);
     return trie;
 }
-#[no_mangle]
 pub unsafe extern "C" fn trie_fread(mut file: *mut FILE) -> *mut Trie {
     let mut trie: *mut Trie = 0 as *mut Trie;
     trie = malloc(::core::mem::size_of::<Trie>() as libc::c_ulong) as *mut Trie;
@@ -103,14 +105,12 @@ pub unsafe extern "C" fn trie_fread(mut file: *mut FILE) -> *mut Trie {
     free(trie as *mut libc::c_void);
     return 0 as *mut Trie;
 }
-#[no_mangle]
 pub unsafe extern "C" fn trie_free(mut trie: *mut Trie) {
     alpha_map_free((*trie).alpha_map);
     da_free((*trie).da);
     tail_free((*trie).tail);
     free(trie as *mut libc::c_void);
 }
-#[no_mangle]
 pub unsafe extern "C" fn trie_save(
     mut trie: *mut Trie,
     mut path: *const libc::c_char,
@@ -125,13 +125,11 @@ pub unsafe extern "C" fn trie_save(
     fclose(file);
     return res;
 }
-#[no_mangle]
 pub unsafe extern "C" fn trie_get_serialized_size(mut trie: *mut Trie) -> size_t {
     return (alpha_map_get_serialized_size((*trie).alpha_map))
         .wrapping_add(da_get_serialized_size((*trie).da))
         .wrapping_add(tail_get_serialized_size((*trie).tail));
 }
-#[no_mangle]
 pub unsafe extern "C" fn trie_serialize(mut trie: *mut Trie, mut ptr: *mut uint8) {
     let mut ptr1: *mut uint8 = ptr;
     alpha_map_serialize_bin((*trie).alpha_map, &mut ptr1);
@@ -139,7 +137,6 @@ pub unsafe extern "C" fn trie_serialize(mut trie: *mut Trie, mut ptr: *mut uint8
     tail_serialize((*trie).tail, &mut ptr1);
     (*trie).is_dirty = DA_FALSE;
 }
-#[no_mangle]
 pub unsafe extern "C" fn trie_fwrite(mut trie: *mut Trie, mut file: *mut FILE) -> libc::c_int {
     if alpha_map_fwrite_bin((*trie).alpha_map, file) != 0 as libc::c_int {
         return -(1 as libc::c_int);
@@ -153,11 +150,9 @@ pub unsafe extern "C" fn trie_fwrite(mut trie: *mut Trie, mut file: *mut FILE) -
     (*trie).is_dirty = DA_FALSE;
     return 0 as libc::c_int;
 }
-#[no_mangle]
 pub unsafe extern "C" fn trie_is_dirty(mut trie: *const Trie) -> Bool {
     return (*trie).is_dirty;
 }
-#[no_mangle]
 pub unsafe extern "C" fn trie_retrieve(
     mut trie: *const Trie,
     mut key: *const AlphaChar,

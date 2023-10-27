@@ -1,12 +1,6 @@
 use ::libc;
-use datrie::{
-    fileutils::{
-        file_read_chars, file_read_int16, file_read_int32, file_write_chars, file_write_int16,
-        file_write_int32, serialize_int16_be_incr, serialize_int32_be_incr,
-    },
-    tail::{Tail, TailBlock},
-    trie_string::{trie_char_strdup, trie_char_strlen, trie_char_strsize},
-};
+
+use crate::trie_string::{trie_char_strdup, trie_char_strlen, trie_char_strsize};
 
 extern "C" {
     fn memcpy(_: *mut libc::c_void, _: *const libc::c_void, _: libc::c_ulong) -> *mut libc::c_void;
@@ -15,14 +9,14 @@ extern "C" {
     fn free(_: *mut libc::c_void);
     fn fseek(__stream: *mut FILE, __off: libc::c_long, __whence: libc::c_int) -> libc::c_int;
     fn ftell(__stream: *mut FILE) -> libc::c_long;
-    // fn serialize_int32_be_incr(buff: *mut *mut uint8, val: int32);
-    // fn file_read_int32(file: *mut FILE, o_val: *mut int32) -> Bool;
-    // fn file_write_int32(file: *mut FILE, val: int32) -> Bool;
-    // fn serialize_int16_be_incr(buff: *mut *mut uint8, val: int16);
-    // fn file_read_int16(file: *mut FILE, o_val: *mut int16) -> Bool;
-    // fn file_write_int16(file: *mut FILE, val: int16) -> Bool;
-    // fn file_read_chars(file: *mut FILE, buff: *mut libc::c_char, len: libc::c_int) -> Bool;
-    // fn file_write_chars(file: *mut FILE, buff: *const libc::c_char, len: libc::c_int) -> Bool;
+    fn serialize_int32_be_incr(buff: *mut *mut uint8, val: int32);
+    fn file_read_int32(file: *mut FILE, o_val: *mut int32) -> Bool;
+    fn file_write_int32(file: *mut FILE, val: int32) -> Bool;
+    fn serialize_int16_be_incr(buff: *mut *mut uint8, val: int16);
+    fn file_read_int16(file: *mut FILE, o_val: *mut int16) -> Bool;
+    fn file_write_int16(file: *mut FILE, val: int16) -> Bool;
+    fn file_read_chars(file: *mut FILE, buff: *mut libc::c_char, len: libc::c_int) -> Bool;
+    fn file_write_chars(file: *mut FILE, buff: *const libc::c_char, len: libc::c_int) -> Bool;
 }
 pub type size_t = libc::c_ulong;
 pub type __off_t = libc::c_long;
@@ -38,6 +32,20 @@ pub type int32 = libc::c_int;
 pub type TrieChar = libc::c_uchar;
 pub type TrieIndex = int32;
 pub type TrieData = int32;
+#[derive(Copy, Clone)]
+// #[repr(C)]
+pub struct Tail {
+    pub num_tails: TrieIndex,
+    pub tails: *mut TailBlock,
+    pub first_free: TrieIndex,
+}
+#[derive(Copy, Clone)]
+// #[repr(C)]
+pub struct TailBlock {
+    pub next_free: TrieIndex,
+    pub data: TrieData,
+    pub suffix: *mut TrieChar,
+}
 #[no_mangle]
 pub unsafe extern "C" fn tail_new() -> *mut Tail {
     let mut t: *mut Tail = 0 as *mut Tail;

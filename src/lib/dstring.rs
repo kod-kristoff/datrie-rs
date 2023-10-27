@@ -1,5 +1,4 @@
 use ::libc;
-use datrie::dstring::DString;
 extern "C" {
     fn memcpy(_: *mut libc::c_void, _: *const libc::c_void, _: libc::c_ulong) -> *mut libc::c_void;
     fn memset(_: *mut libc::c_void, _: libc::c_int, _: libc::c_ulong) -> *mut libc::c_void;
@@ -10,6 +9,14 @@ extern "C" {
 pub type Bool = libc::c_uint;
 pub const DA_TRUE: Bool = 1;
 pub const DA_FALSE: Bool = 0;
+#[derive(Copy, Clone)]
+// #[repr(C)]
+pub struct DString {
+    pub char_size: libc::c_int,
+    pub str_len: libc::c_int,
+    pub alloc_size: libc::c_int,
+    pub val: *mut libc::c_void,
+}
 #[no_mangle]
 pub unsafe extern "C" fn dstring_new(
     mut char_size: libc::c_int,
