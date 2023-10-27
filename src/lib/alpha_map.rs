@@ -1,7 +1,10 @@
 use ::libc;
-use std::ptr;
+use std::{fs, io::SeekFrom, ptr};
 
-use crate::{DatrieError, DatrieResult, ErrorKind};
+use crate::{
+    fileutils::{ReadExt, ReadSeekExt},
+    DatrieError, DatrieResult, ErrorKind,
+};
 
 extern "C" {
     fn malloc(_: libc::c_ulong) -> *mut libc::c_void;
@@ -74,7 +77,7 @@ pub unsafe fn alpha_char_strcmp(
     return 0 as libc::c_int;
 }
 impl AlphaMap {
-    pub unsafe fn new() -> AlphaMap {
+    pub fn new() -> AlphaMap {
         AlphaMap {
             first_range: ptr::null_mut(),
             alpha_begin: 0,
@@ -196,6 +199,61 @@ impl AlphaMap {
             "failed to load file".into(),
         ));
         // return 0 as *mut AlphaMap;
+    }
+    pub fn fread_bin_safe<R: ReadSeekExt>(reader: &mut R) -> DatrieResult<AlphaMap> {
+        let save_pos = reader.seek(SeekFrom::Current(0))?;
+        AlphaMap::do_fread_bin_safe(reader).map_err(|err| {
+            if let Err(io_err) = reader.seek(SeekFrom::Start(save_pos)) {
+                return io_err.into();
+            }
+            err
+        })
+    }
+    fn do_fread_bin_safe<R: ReadExt>(reader: &mut R) -> DatrieResult<AlphaMap> {
+        let mut sig = 0;
+        reader.read_uint32(&mut sig)?;
+        if sig != 0xd9fcd9fc {
+            return Err(DatrieError::new(
+                ErrorKind::InvalidFileSignature,
+                format!("Unexpected AlphaMap signature: '{}'", sig),
+            ));
+        }
+        let mut alpha_map = AlphaMap::new();
+        let mut total = 0;
+        reader.read_int32(&mut total)?;
+
+        for _ in 0..total {
+            let mut b = 0;
+            let mut e = 0;
+            reader.read_int32(&mut b)?;
+            reader.read_int32(&mut e)?;
+            alpha_map.add_range_only_safe(b as AlphaChar, e as AlphaChar)?;
+        }
+        alpha_map.recalc_work_area_safe()?;
+        Ok(alpha_map)
+    }
+
+    fn add_range_only_safe(&mut self, b: AlphaChar, e: AlphaChar) -> DatrieResult<()> {
+        let res = unsafe { alpha_map_add_range_only(self as *mut AlphaMap, b, e) };
+
+        if res != 0 as libc::c_int {
+            return Err(DatrieError::new(
+                ErrorKind::Bug,
+                format!("add_range_only returned '{res}'"),
+            ));
+        }
+        Ok(())
+    }
+    fn recalc_work_area_safe(&mut self) -> DatrieResult<()> {
+        let res = unsafe { alpha_map_recalc_work_area(self as *mut AlphaMap) };
+
+        if res != 0 as libc::c_int {
+            return Err(DatrieError::new(
+                ErrorKind::Bug,
+                format!("recalc_work_area returned '{res}'"),
+            ));
+        }
+        Ok(())
     }
 }
 unsafe fn alpha_map_get_total_ranges(mut alpha_map: *const AlphaMap) -> libc::c_int {
@@ -494,26 +552,15 @@ pub unsafe fn alpha_map_add_range(
     return alpha_map_recalc_work_area(alpha_map);
 }
 impl AlphaMap {
-    pub unsafe fn add_range(
+    pub fn add_range(
         &mut self,
         // mut alpha_map: *mut AlphaMap,
         begin: AlphaChar,
         end: AlphaChar,
     ) -> DatrieResult<()> {
-        let res: libc::c_int = alpha_map_add_range_only(self, begin, end);
-        if res != 0 as libc::c_int {
-            return Err(DatrieError::new(
-                ErrorKind::Bug,
-                format!("add_range_only returned '{res}'"),
-            ));
-        }
-        match alpha_map_recalc_work_area(self) {
-            0 => Ok(()),
-            res => Err(DatrieError::new(
-                ErrorKind::Bug,
-                format!("add_range_only returned '{res}'"),
-            )),
-        }
+        self.add_range_only_safe(begin, end)?;
+        self.recalc_work_area_safe()?;
+        Ok(())
     }
 }
 pub unsafe fn alpha_map_char_to_trie(

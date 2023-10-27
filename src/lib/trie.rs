@@ -1,7 +1,10 @@
+use std::path::Path;
+use std::{fs, io};
+
+use crate::fileutils::{ReadExt, ReadSeekExt};
 use crate::{alpha_map::*, darray::*, tail::*};
 use crate::{trie_string::*, DatrieError, DatrieResult, ErrorKind};
 use ::libc;
-use std::ptr;
 
 extern "C" {
     fn malloc(_: libc::c_ulong) -> *mut libc::c_void;
@@ -83,6 +86,11 @@ impl Trie {
         fclose(trie_file);
         return result;
     }
+    pub fn from_path(path: &Path) -> DatrieResult<Trie> {
+        let trie_file = fs::File::open(path)?;
+        let mut reader = io::BufReader::new(trie_file);
+        Trie::fread_safe(&mut reader)
+    }
     pub unsafe fn fread(file: *mut FILE) -> DatrieResult<Trie> {
         // let mut trie: *mut Trie = 0 as *mut Trie;
         // trie = malloc(::core::mem::size_of::<Trie>() as libc::c_ulong) as *mut Trie;
@@ -106,6 +114,17 @@ impl Trie {
             tail,
             is_dirty: DA_FALSE,
         });
+    }
+    pub fn fread_safe<R: ReadExt + io::Seek>(reader: &mut R) -> DatrieResult<Trie> {
+        let alpha_map = Box::new(AlphaMap::fread_bin_safe(reader)?);
+        let da = DArray::fread_safe(reader)?;
+        let tail = Tail::fread_safe(reader)?;
+        Ok(Trie {
+            alpha_map,
+            da,
+            tail,
+            is_dirty: DA_FALSE,
+        })
     }
 }
 // pub unsafe fn free(mut trie: *mut Trie) {
@@ -136,6 +155,11 @@ impl Trie {
         fclose(file);
         return res;
     }
+    pub fn save_safe(&mut self, path: &Path) -> DatrieResult<()> {
+        let mut file = fs::File::create(path)?;
+        self.serialize_safe(&mut file)?;
+        Ok(())
+    }
     pub unsafe fn get_serialized_size(mut trie: *mut Trie) -> size_t {
         return (alpha_map_get_serialized_size((*trie).alpha_map.as_ref()))
             .wrapping_add(da_get_serialized_size((*trie).da))
@@ -147,6 +171,19 @@ impl Trie {
         da_serialize((*trie).da, &mut ptr1);
         tail_serialize((*trie).tail, &mut ptr1);
         (*trie).is_dirty = DA_FALSE;
+    }
+    pub fn serialize_safe(&mut self, write: &mut dyn std::io::Write) -> DatrieResult<()> {
+        let size = unsafe { Self::get_serialized_size(self as *mut Trie) } as usize;
+        let buf: Vec<u8> = Vec::with_capacity(size);
+        let mut buf = std::mem::ManuallyDrop::new(buf);
+        let buf_cap = buf.capacity();
+        let buf_ptr = buf.as_mut_ptr();
+        unsafe {
+            Self::serialize(self as *mut Trie, buf_ptr);
+        }
+        let buf = unsafe { Vec::from_raw_parts(buf_ptr, size, buf_cap) };
+        write.write_all(&buf)?;
+        Ok(())
     }
     pub unsafe fn fwrite(mut trie: *mut Trie, mut file: *mut FILE) -> libc::c_int {
         if alpha_map_fwrite_bin((*trie).alpha_map.as_ref(), file) != 0 as libc::c_int {

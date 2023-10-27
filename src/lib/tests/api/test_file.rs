@@ -27,6 +27,7 @@ use datrie::{
     DatrieResult,
 };
 use std::{ffi::CString, fs};
+use tempfile::tempdir;
 
 use crate::utils::{
     dict_src_get_data, dict_src_set_data, en_trie_new, get_dict_src, msg_step, DictRec,
@@ -72,15 +73,9 @@ extern "C" fn trie_enum_mark_rec(
     return DA_TRUE;
 }
 
-// int
-// main (void)
 #[test]
 fn test_file() -> DatrieResult<()> {
     unsafe {
-        //     Trie    *test_trie;
-        //     DictRec *dict_p;
-        // is_failed;
-
         msg_step("Preparing trie");
         let mut test_trie = en_trie_new()?;
 
@@ -143,15 +138,80 @@ fn test_file() -> DatrieResult<()> {
         }
 
         //     remove (TRIE_FILENAME);
-        //     trie_free (test_trie);
-        //     return 0;
-
-        // err_trie_saved:
-        //     remove (TRIE_FILENAME);
-        // err_trie_created:
-        //     trie_free (test_trie);
-        // err_trie_not_created:
-        //     return 1;
     }
+    Ok(())
+}
+
+#[test]
+fn test_save_file_and_reload() -> DatrieResult<()> {
+    let dir = tempdir().unwrap();
+
+    msg_step("Preparing trie");
+    let mut test_trie = unsafe { en_trie_new()? };
+
+    /* add/remove some words */
+    let mut dict_src = get_dict_src();
+    for dict_p in &dict_src {
+        unsafe {
+            assert_eq!(
+                Trie::store(&mut test_trie, dict_p.key.as_ptr(), dict_p.data),
+                DA_TRUE,
+                "Failed to add key '{:?}', data {}.\n",
+                dict_p.key,
+                dict_p.data
+            );
+        }
+    }
+
+    /* save & close */
+    msg_step("Saving trie to file");
+    let trie_filename = dir.path().join(TRIE_FILENAME);
+    // let _ = fs::remove_file(TRIE_FILENAME); /* error ignored */
+    // let trie_filename = CString::new(TRIE_FILENAME).unwrap();
+    assert!(
+        test_trie.save_safe(&trie_filename).is_ok(),
+        "Failed to save trie to file '{}'.\n",
+        TRIE_FILENAME
+    );
+
+    /* reload from file */
+    msg_step("Reloading trie from the saved file");
+    let test_trie = Trie::from_path(&trie_filename)?;
+
+    /* enumerate & check */
+    msg_step("Checking trie contents");
+    let mut is_failed = false;
+    let mut enum_data = EnumData {
+        dict_src: &mut dict_src,
+        is_failed: &mut is_failed,
+    };
+    /* mark entries found in file */
+    unsafe {
+        if Trie::enumerate(
+            &test_trie,
+            Some(trie_enum_mark_rec),
+            &mut enum_data as *mut EnumData as *mut libc::c_void,
+        ) != DA_TRUE
+        {
+            panic!("Failed to enumerate trie file contents.\n");
+            //         goto err_trie_saved;
+        }
+        /* check for unmarked entries, (i.e. missed in file) */
+        for dict_p in dict_src {
+            if (dict_p.data != TRIE_DATA_READ) {
+                println!(
+                    "Entry missed in file: key '{:?}', data {}.\n",
+                    dict_p.key, dict_p.data
+                );
+                is_failed = true;
+            }
+        }
+        if (is_failed) {
+            panic!("Errors found in trie saved contents.\n");
+        }
+
+        //     remove (TRIE_FILENAME);
+    }
+    dir.close().unwrap();
     Ok(())
 }

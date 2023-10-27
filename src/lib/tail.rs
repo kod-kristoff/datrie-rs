@@ -1,6 +1,12 @@
+use std::io::{self, SeekFrom};
+
 use ::libc;
 
-use crate::trie_string::{trie_char_strdup, trie_char_strlen, trie_char_strsize};
+use crate::{
+    fileutils::{ReadExt, ReadSeekExt},
+    trie_string::{trie_char_strdup, trie_char_strlen, trie_char_strsize},
+    DatrieError, DatrieResult,
+};
 
 extern "C" {
     fn memcpy(_: *mut libc::c_void, _: *const libc::c_void, _: libc::c_ulong) -> *mut libc::c_void;
@@ -57,6 +63,148 @@ pub unsafe extern "C" fn tail_new() -> *mut Tail {
     (*t).num_tails = 0 as libc::c_int;
     (*t).tails = 0 as *mut TailBlock;
     return t;
+}
+impl Tail {
+    pub fn fread_safe<R: ReadExt + io::Seek>(reader: &mut R) -> DatrieResult<*mut Tail> {
+        let save_pos = reader.seek(SeekFrom::Current(0))?;
+        Tail::do_fread_safe(reader).map_err(|err| {
+            if let Err(io_err) = reader.seek(SeekFrom::Start(save_pos)) {
+                return io_err.into();
+            }
+            err
+        })
+    }
+    fn do_fread_safe<R: ReadExt>(reader: &mut R) -> DatrieResult<*mut Tail> {
+        let mut current_block: u64;
+        let mut t: *mut Tail = 0 as *mut Tail;
+        let mut i: TrieIndex = 0;
+        let mut sig: uint32 = 0;
+        reader.read_uint32(&mut sig)?;
+        if 0xdffcdffc == sig {
+            t = unsafe { malloc(::core::mem::size_of::<Tail>() as libc::c_ulong) as *mut Tail };
+            if !(t.is_null() as libc::c_int as libc::c_long != 0) {
+                unsafe {
+                    // if let Ok(first_free) = reader.read_int32() {
+                    //     if let Ok(num_tails) = reader.read_int32() {
+                    //         (*t).first_free = first_free;
+                    //         (*t).num_tails = num_tails;
+                    if reader.read_int32(&mut (*t).first_free).is_ok()
+                        && reader.read_int32(&mut (*t).num_tails).is_ok()
+                    {
+                        // if !(file_read_int32(file, &mut (*t).first_free) as u64 == 0
+                        //     || file_read_int32(file, &mut (*t).num_tails) as u64 == 0)
+                        // {
+                        if !((*t).num_tails as libc::c_ulong
+                            > (18446744073709551615 as libc::c_ulong)
+                                .wrapping_div(::core::mem::size_of::<TailBlock>() as libc::c_ulong))
+                        {
+                            (*t).tails =
+                                malloc(((*t).num_tails as libc::c_ulong).wrapping_mul(
+                                    ::core::mem::size_of::<TailBlock>() as libc::c_ulong,
+                                )) as *mut TailBlock;
+                            if !(((*t).tails).is_null() as libc::c_int as libc::c_long != 0) {
+                                i = 0 as libc::c_int;
+                                loop {
+                                    if !(i < (*t).num_tails) {
+                                        current_block = 15904375183555213903;
+                                        break;
+                                    }
+                                    let mut length: int16 = 0;
+                                    // if reader.read_int32(
+                                    //    &mut (*((*t).tails).offset(i as isize)).next_free).is_err() ||
+                                    // } else {
+                                    //     current_block = 1386273818809128762;
+                                    //     break;
+                                    // }
+                                    // if let Ok(data) = reader.read_int32() {
+                                    //     (*((*t).tails).offset(i as isize)).data = data;
+                                    // } else {
+                                    //     current_block = 1386273818809128762;
+                                    //     break;
+                                    // }
+                                    // if let Ok(v_length) = reader.read_int16() {
+                                    //     length = v_length;
+                                    // } else {
+                                    //     current_block = 1386273818809128762;
+                                    //     break;
+                                    // }
+                                    if reader
+                                        .read_int32(
+                                            &mut (*((*t).tails).offset(i as isize)).next_free,
+                                        )
+                                        .is_err()
+                                        || reader
+                                            .read_int32(
+                                                &mut (*((*t).tails).offset(i as isize)).data,
+                                            )
+                                            .is_err()
+                                        || reader.read_int16(&mut length).is_err()
+                                    {
+                                        current_block = 1386273818809128762;
+                                        break;
+                                    }
+                                    let ref mut fresh0 = (*((*t).tails).offset(i as isize)).suffix;
+                                    *fresh0 = malloc(
+                                        (length as libc::c_int + 1 as libc::c_int) as libc::c_ulong,
+                                    )
+                                        as *mut TrieChar;
+                                    if ((*((*t).tails).offset(i as isize)).suffix).is_null()
+                                        as libc::c_int
+                                        as libc::c_long
+                                        != 0
+                                    {
+                                        current_block = 1386273818809128762;
+                                        break;
+                                    }
+                                    if length as libc::c_int > 0 as libc::c_int {
+                                        if reader
+                                            .read_chars(
+                                                (*((*t).tails).offset(i as isize)).suffix
+                                                    as *mut libc::c_char,
+                                                length as libc::c_int,
+                                            )
+                                            .is_err()
+                                        {
+                                            free(
+                                                (*((*t).tails).offset(i as isize)).suffix
+                                                    as *mut libc::c_void,
+                                            );
+                                            current_block = 1386273818809128762;
+                                            break;
+                                        }
+                                    }
+                                    *((*((*t).tails).offset(i as isize)).suffix)
+                                        .offset(length as isize) = '\0' as i32 as TrieChar;
+                                    i += 1;
+                                    i;
+                                }
+                                match current_block {
+                                    15904375183555213903 => return Ok(t),
+                                    _ => {
+                                        while i > 0 as libc::c_int {
+                                            i -= 1;
+                                            free(
+                                                (*((*t).tails).offset(i as isize)).suffix
+                                                    as *mut libc::c_void,
+                                            );
+                                        }
+                                        free((*t).tails as *mut libc::c_void);
+                                    }
+                                }
+                            }
+                        }
+                        // }
+                    }
+                    free(t as *mut libc::c_void);
+                }
+            }
+        }
+        // return 0 as *mut Tail;
+        return Err(DatrieError::new(
+            crate::ErrorKind::Bug,
+            "failed to read tail".into(),
+        ));
+    }
 }
 #[no_mangle]
 pub unsafe extern "C" fn tail_fread(mut file: *mut FILE) -> *mut Tail {
