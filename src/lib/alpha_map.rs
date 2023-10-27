@@ -42,7 +42,6 @@ pub struct AlphaRange {
     pub begin: AlphaChar,
     pub end: AlphaChar,
 }
-#[no_mangle]
 pub unsafe extern "C" fn alpha_char_strlen(mut str: *const AlphaChar) -> libc::c_int {
     let mut p: *const AlphaChar = 0 as *const AlphaChar;
     p = str;
@@ -52,7 +51,6 @@ pub unsafe extern "C" fn alpha_char_strlen(mut str: *const AlphaChar) -> libc::c
     }
     return p.offset_from(str) as libc::c_long as libc::c_int;
 }
-#[no_mangle]
 pub unsafe extern "C" fn alpha_char_strcmp(
     mut str1: *const AlphaChar,
     mut str2: *const AlphaChar,
@@ -71,7 +69,30 @@ pub unsafe extern "C" fn alpha_char_strcmp(
     }
     return 0 as libc::c_int;
 }
-#[no_mangle]
+impl AlphaMap {
+    // pub unsafe fn new() -> AlphaMap {
+    //     AlphaMap { first_range: 0 as *mut AlphaRange, alpha_begin: , alpha_end: , alpha_map_sz: , alpha_to_trie_map: , trie_map_sz: , trie_to_alpha_map:  }
+    // }
+    pub unsafe fn new_boxed() -> Box<AlphaMap> {
+        let alpha_map: *mut AlphaMap = alpha_map_new();
+        if alpha_map.is_null() {
+            todo!("handle malloc failure");
+        }
+        Box::from_raw(alpha_map)
+    }
+}
+
+pub unsafe fn drop_boxed(alpha_map: Box<AlphaMap>) {
+    let alpha_map = Box::into_raw(alpha_map);
+    alpha_map_free(alpha_map);
+}
+// pub unsafe fn clone_boxed(a_map: Box<AlphaMap>) -> Box<AlphaMap> {
+//     let alpha_map = alpha_map_clone(a_map as *const AlphaMap);
+//     if alpha_map.is_null() {
+//         todo!("handle malloc");
+//     }
+//     return Box::from_raw(alpha_map);
+// }
 pub unsafe extern "C" fn alpha_map_new() -> *mut AlphaMap {
     let mut alpha_map: *mut AlphaMap = 0 as *mut AlphaMap;
     alpha_map = malloc(::core::mem::size_of::<AlphaMap>() as libc::c_ulong) as *mut AlphaMap;
@@ -87,7 +108,7 @@ pub unsafe extern "C" fn alpha_map_new() -> *mut AlphaMap {
     (*alpha_map).trie_to_alpha_map = 0 as *mut AlphaChar;
     return alpha_map;
 }
-#[no_mangle]
+
 pub unsafe extern "C" fn alpha_map_clone(mut a_map: *const AlphaMap) -> *mut AlphaMap {
     let mut current_block: u64;
     let mut alpha_map: *mut AlphaMap = 0 as *mut AlphaMap;
@@ -119,7 +140,7 @@ pub unsafe extern "C" fn alpha_map_clone(mut a_map: *const AlphaMap) -> *mut Alp
     alpha_map_free(alpha_map);
     return 0 as *mut AlphaMap;
 }
-#[no_mangle]
+
 pub unsafe extern "C" fn alpha_map_free(mut alpha_map: *mut AlphaMap) {
     let mut p: *mut AlphaRange = 0 as *mut AlphaRange;
     let mut q: *mut AlphaRange = 0 as *mut AlphaRange;
@@ -137,7 +158,7 @@ pub unsafe extern "C" fn alpha_map_free(mut alpha_map: *mut AlphaMap) {
     }
     free(alpha_map as *mut libc::c_void);
 }
-#[no_mangle]
+
 pub unsafe extern "C" fn alpha_map_fread_bin(mut file: *mut FILE) -> *mut AlphaMap {
     let mut current_block: u64;
     let mut save_pos: libc::c_long = 0;
@@ -200,7 +221,7 @@ unsafe extern "C" fn alpha_map_get_total_ranges(mut alpha_map: *const AlphaMap) 
     }
     return n;
 }
-#[no_mangle]
+
 pub unsafe extern "C" fn alpha_map_fwrite_bin(
     mut alpha_map: *const AlphaMap,
     mut file: *mut FILE,
@@ -222,7 +243,7 @@ pub unsafe extern "C" fn alpha_map_fwrite_bin(
     }
     return 0 as libc::c_int;
 }
-#[no_mangle]
+
 pub unsafe extern "C" fn alpha_map_get_serialized_size(mut alpha_map: *const AlphaMap) -> size_t {
     let mut ranges_count: int32 = alpha_map_get_total_ranges(alpha_map);
     return (4 as libc::c_int as libc::c_ulong)
@@ -233,7 +254,7 @@ pub unsafe extern "C" fn alpha_map_get_serialized_size(mut alpha_map: *const Alp
                 .wrapping_mul(ranges_count as libc::c_ulong),
         );
 }
-#[no_mangle]
+
 pub unsafe extern "C" fn alpha_map_serialize_bin(
     mut alpha_map: *const AlphaMap,
     mut ptr: *mut *mut uint8,
@@ -474,7 +495,7 @@ unsafe extern "C" fn alpha_map_recalc_work_area(mut alpha_map: *mut AlphaMap) ->
     }
     return 0 as libc::c_int;
 }
-#[no_mangle]
+
 pub unsafe extern "C" fn alpha_map_add_range(
     mut alpha_map: *mut AlphaMap,
     mut begin: AlphaChar,
@@ -486,7 +507,7 @@ pub unsafe extern "C" fn alpha_map_add_range(
     }
     return alpha_map_recalc_work_area(alpha_map);
 }
-#[no_mangle]
+
 pub unsafe extern "C" fn alpha_map_char_to_trie(
     mut alpha_map: *const AlphaMap,
     mut ac: AlphaChar,
@@ -505,7 +526,7 @@ pub unsafe extern "C" fn alpha_map_char_to_trie(
     }
     return 0x7fffffff as libc::c_int;
 }
-#[no_mangle]
+
 pub unsafe extern "C" fn alpha_map_trie_to_char(
     mut alpha_map: *const AlphaMap,
     mut tc: TrieChar,
@@ -515,7 +536,7 @@ pub unsafe extern "C" fn alpha_map_trie_to_char(
     }
     return !(0 as libc::c_int as AlphaChar);
 }
-#[no_mangle]
+
 pub unsafe extern "C" fn alpha_map_char_to_trie_str(
     mut alpha_map: *const AlphaMap,
     mut str: *const AlphaChar,
@@ -556,7 +577,7 @@ pub unsafe extern "C" fn alpha_map_char_to_trie_str(
         }
     };
 }
-#[no_mangle]
+
 pub unsafe extern "C" fn alpha_map_trie_to_char_str(
     mut alpha_map: *const AlphaMap,
     mut str: *const TrieChar,

@@ -45,70 +45,40 @@ pub type TrieData = int32;
 pub type FILE = libc::FILE;
 #[no_mangle]
 pub unsafe extern "C" fn trie_new(mut alpha_map: *const AlphaMap) -> *mut Trie {
-    let mut trie: *mut Trie = 0 as *mut Trie;
-    trie = malloc(::core::mem::size_of::<Trie>() as libc::c_ulong) as *mut Trie;
-    if trie.is_null() as libc::c_int as libc::c_long != 0 {
-        return 0 as *mut Trie;
-    }
-    (*trie).alpha_map = alpha_map_clone(alpha_map);
-    if !(((*trie).alpha_map).is_null() as libc::c_int as libc::c_long != 0) {
-        (*trie).da = da_new();
-        if !(((*trie).da).is_null() as libc::c_int as libc::c_long != 0) {
-            (*trie).tail = tail_new();
-            if ((*trie).tail).is_null() as libc::c_int as libc::c_long != 0 {
-                da_free((*trie).da);
-            } else {
-                (*trie).is_dirty = DA_TRUE;
-                return trie;
-            }
+    let result = Trie::new_boxed(alpha_map);
+    match result {
+        Ok(trie) => Box::into_raw(trie),
+        Err(err) => {
+            eprintln!("error: {:?}", err);
+            0 as *mut Trie
         }
-        alpha_map_free((*trie).alpha_map);
     }
-    free(trie as *mut libc::c_void);
-    return 0 as *mut Trie;
 }
 #[no_mangle]
 pub unsafe extern "C" fn trie_new_from_file(mut path: *const libc::c_char) -> *mut Trie {
-    let mut trie: *mut Trie = 0 as *mut Trie;
-    let mut trie_file: *mut FILE = 0 as *mut FILE;
-    trie_file = fopen(path, b"rb\0" as *const u8 as *const libc::c_char);
-    if trie_file.is_null() {
-        return 0 as *mut Trie;
+    let result = Trie::new_boxed_from_file(path);
+    match result {
+        Ok(trie) => Box::into_raw(trie),
+        Err(err) => {
+            eprintln!("error: {:?}", err);
+            0 as *mut Trie
+        }
     }
-    trie = trie_fread(trie_file);
-    fclose(trie_file);
-    return trie;
 }
 #[no_mangle]
 pub unsafe extern "C" fn trie_fread(mut file: *mut FILE) -> *mut Trie {
-    let mut trie: *mut Trie = 0 as *mut Trie;
-    trie = malloc(::core::mem::size_of::<Trie>() as libc::c_ulong) as *mut Trie;
-    if trie.is_null() as libc::c_int as libc::c_long != 0 {
-        return 0 as *mut Trie;
-    }
-    (*trie).alpha_map = alpha_map_fread_bin(file);
-    if !((*trie).alpha_map).is_null() {
-        (*trie).da = da_fread(file);
-        if !((*trie).da).is_null() {
-            (*trie).tail = tail_fread(file);
-            if ((*trie).tail).is_null() {
-                da_free((*trie).da);
-            } else {
-                (*trie).is_dirty = DA_FALSE;
-                return trie;
-            }
+    let result = Trie::fread_boxed(file);
+    match result {
+        Ok(trie) => Box::into_raw(trie),
+        Err(err) => {
+            eprintln!("error: {:?}", err);
+            0 as *mut Trie
         }
-        alpha_map_free((*trie).alpha_map);
     }
-    free(trie as *mut libc::c_void);
-    return 0 as *mut Trie;
 }
 #[no_mangle]
 pub unsafe extern "C" fn trie_free(mut trie: *mut Trie) {
-    alpha_map_free((*trie).alpha_map);
-    da_free((*trie).da);
-    tail_free((*trie).tail);
-    free(trie as *mut libc::c_void);
+    datrie::trie::drop_boxed(Box::from_raw(trie))
 }
 #[no_mangle]
 pub unsafe extern "C" fn trie_save(
@@ -209,7 +179,7 @@ pub unsafe extern "C" fn trie_store(
     mut key: *const AlphaChar,
     mut data: TrieData,
 ) -> Bool {
-    return trie_store_conditionally(trie, key, data, DA_TRUE);
+    return datrie::trie::trie_store(trie, key, data);
 }
 #[no_mangle]
 pub unsafe extern "C" fn trie_store_if_absent(
@@ -217,150 +187,7 @@ pub unsafe extern "C" fn trie_store_if_absent(
     mut key: *const AlphaChar,
     mut data: TrieData,
 ) -> Bool {
-    return trie_store_conditionally(trie, key, data, DA_FALSE);
-}
-unsafe extern "C" fn trie_store_conditionally(
-    mut trie: *mut Trie,
-    mut key: *const AlphaChar,
-    mut data: TrieData,
-    mut is_overwrite: Bool,
-) -> Bool {
-    let mut s: TrieIndex = 0;
-    let mut t: TrieIndex = 0;
-    let mut suffix_idx: libc::c_short = 0;
-    let mut p: *const AlphaChar = 0 as *const AlphaChar;
-    let mut sep: *const AlphaChar = 0 as *const AlphaChar;
-    s = da_get_root((*trie).da);
-    p = key;
-    while !(da_get_base((*trie).da, s) < 0 as libc::c_int) {
-        let mut tc: TrieIndex = alpha_map_char_to_trie((*trie).alpha_map, *p);
-        if 0x7fffffff as libc::c_int == tc {
-            return DA_FALSE;
-        }
-        if da_walk((*trie).da, &mut s, tc as TrieChar) as u64 == 0 {
-            let mut key_str: *mut TrieChar = 0 as *mut TrieChar;
-            let mut res: Bool = DA_FALSE;
-            key_str = alpha_map_char_to_trie_str((*trie).alpha_map, p);
-            if key_str.is_null() {
-                return DA_FALSE;
-            }
-            res = trie_branch_in_branch(trie, s, key_str, data);
-            free(key_str as *mut libc::c_void);
-            return res;
-        }
-        if 0 as libc::c_int as libc::c_uint == *p {
-            break;
-        }
-        p = p.offset(1);
-        p;
-    }
-    sep = p;
-    t = -da_get_base((*trie).da, s);
-    suffix_idx = 0 as libc::c_int as libc::c_short;
-    loop {
-        let mut tc_0: TrieIndex = alpha_map_char_to_trie((*trie).alpha_map, *p);
-        if 0x7fffffff as libc::c_int == tc_0 {
-            return DA_FALSE;
-        }
-        if tail_walk_char((*trie).tail, t, &mut suffix_idx, tc_0 as TrieChar) as u64 == 0 {
-            let mut tail_str: *mut TrieChar = 0 as *mut TrieChar;
-            let mut res_0: Bool = DA_FALSE;
-            tail_str = alpha_map_char_to_trie_str((*trie).alpha_map, sep);
-            if tail_str.is_null() {
-                return DA_FALSE;
-            }
-            res_0 = trie_branch_in_tail(trie, s, tail_str, data);
-            free(tail_str as *mut libc::c_void);
-            return res_0;
-        }
-        if 0 as libc::c_int as libc::c_uint == *p {
-            break;
-        }
-        p = p.offset(1);
-        p;
-    }
-    if is_overwrite as u64 == 0 {
-        return DA_FALSE;
-    }
-    tail_set_data((*trie).tail, t, data);
-    (*trie).is_dirty = DA_TRUE;
-    return DA_TRUE;
-}
-unsafe extern "C" fn trie_branch_in_branch(
-    mut trie: *mut Trie,
-    mut sep_node: TrieIndex,
-    mut suffix: *const TrieChar,
-    mut data: TrieData,
-) -> Bool {
-    let mut new_da: TrieIndex = 0;
-    let mut new_tail: TrieIndex = 0;
-    new_da = da_insert_branch((*trie).da, sep_node, *suffix);
-    if 0 as libc::c_int == new_da {
-        return DA_FALSE;
-    }
-    if '\0' as i32 != *suffix as libc::c_int {
-        suffix = suffix.offset(1);
-        suffix;
-    }
-    new_tail = tail_add_suffix((*trie).tail, suffix);
-    tail_set_data((*trie).tail, new_tail, data);
-    da_set_base((*trie).da, new_da, -new_tail);
-    (*trie).is_dirty = DA_TRUE;
-    return DA_TRUE;
-}
-unsafe extern "C" fn trie_branch_in_tail(
-    mut trie: *mut Trie,
-    mut sep_node: TrieIndex,
-    mut suffix: *const TrieChar,
-    mut data: TrieData,
-) -> Bool {
-    let mut current_block: u64;
-    let mut old_tail: TrieIndex = 0;
-    let mut old_da: TrieIndex = 0;
-    let mut s: TrieIndex = 0;
-    let mut old_suffix: *const TrieChar = 0 as *const TrieChar;
-    let mut p: *const TrieChar = 0 as *const TrieChar;
-    old_tail = -da_get_base((*trie).da, sep_node);
-    old_suffix = tail_get_suffix((*trie).tail, old_tail);
-    if old_suffix.is_null() {
-        return DA_FALSE;
-    }
-    p = old_suffix;
-    s = sep_node;
-    loop {
-        if !(*p as libc::c_int == *suffix as libc::c_int) {
-            current_block = 6937071982253665452;
-            break;
-        }
-        let mut t: TrieIndex = da_insert_branch((*trie).da, s, *p);
-        if 0 as libc::c_int == t {
-            current_block = 13151848498364941746;
-            break;
-        }
-        s = t;
-        p = p.offset(1);
-        p;
-        suffix = suffix.offset(1);
-        suffix;
-    }
-    match current_block {
-        6937071982253665452 => {
-            old_da = da_insert_branch((*trie).da, s, *p);
-            if !(0 as libc::c_int == old_da) {
-                if '\0' as i32 != *p as libc::c_int {
-                    p = p.offset(1);
-                    p;
-                }
-                tail_set_suffix((*trie).tail, old_tail, p);
-                da_set_base((*trie).da, old_da, -old_tail);
-                return trie_branch_in_branch(trie, s, suffix, data);
-            }
-        }
-        _ => {}
-    }
-    da_prune_upto((*trie).da, sep_node, s);
-    da_set_base((*trie).da, sep_node, -old_tail);
-    return DA_FALSE;
+    return datrie::trie::trie_store(trie, key, data);
 }
 #[no_mangle]
 pub unsafe extern "C" fn trie_delete(mut trie: *mut Trie, mut key: *const AlphaChar) -> Bool {
@@ -438,29 +265,7 @@ pub unsafe extern "C" fn trie_enumerate(
 }
 #[no_mangle]
 pub unsafe extern "C" fn trie_root(mut trie: *const Trie) -> *mut TrieState {
-    return trie_state_new(
-        trie,
-        da_get_root((*trie).da),
-        0 as libc::c_int as libc::c_short,
-        DA_FALSE as libc::c_int as libc::c_short,
-    );
-}
-unsafe extern "C" fn trie_state_new(
-    mut trie: *const Trie,
-    mut index: TrieIndex,
-    mut suffix_idx: libc::c_short,
-    mut is_suffix: libc::c_short,
-) -> *mut TrieState {
-    let mut s: *mut TrieState = 0 as *mut TrieState;
-    s = malloc(::core::mem::size_of::<TrieState>() as libc::c_ulong) as *mut TrieState;
-    if s.is_null() as libc::c_int as libc::c_long != 0 {
-        return 0 as *mut TrieState;
-    }
-    (*s).trie = trie;
-    (*s).index = index;
-    (*s).suffix_idx = suffix_idx;
-    (*s).is_suffix = is_suffix;
-    return s;
+    return datrie::trie::trie_root(trie);
 }
 #[no_mangle]
 pub unsafe extern "C" fn trie_state_copy(mut dst: *mut TrieState, mut src: *const TrieState) {
@@ -468,7 +273,7 @@ pub unsafe extern "C" fn trie_state_copy(mut dst: *mut TrieState, mut src: *cons
 }
 #[no_mangle]
 pub unsafe extern "C" fn trie_state_clone(mut s: *const TrieState) -> *mut TrieState {
-    return trie_state_new((*s).trie, (*s).index, (*s).suffix_idx, (*s).is_suffix);
+    return datrie::trie::trie_state_clone(s);
 }
 #[no_mangle]
 pub unsafe extern "C" fn trie_state_free(mut s: *mut TrieState) {
