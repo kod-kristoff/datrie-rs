@@ -1,8 +1,9 @@
 TARGET_DEBUG_DIR := "../target/debug"
+INCLUDE_DIR := "../dist/include"
 
 build_run_test source target:
 	cc {{source}} utils.c -o {{target}} -Wall -Wextra -g \
-		-L{{TARGET_DEBUG_DIR}} -I.. -ldatrie
+		-L{{TARGET_DEBUG_DIR}} -I{{INCLUDE_DIR}} -ldatrie
 	LD_LIBRARY_PATH={{TARGET_DEBUG_DIR}} ./{{target}}
 	@rm {{target}}
 
