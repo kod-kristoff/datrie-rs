@@ -1,12 +1,6 @@
 use ::libc;
-use datrie::alpha_map::{drop_boxed, AlphaChar, AlphaMap, AlphaRange};
+use datrie::alpha_map::{AlphaChar, AlphaMap};
 
-// extern "C" {
-//     fn malloc(_: libc::c_ulong) -> *mut libc::c_void;
-//     fn free(_: *mut libc::c_void);
-//     fn fseek(__stream: *mut FILE, __off: libc::c_long, __whence: libc::c_int) -> libc::c_int;
-//     fn ftell(__stream: *mut FILE) -> libc::c_long;
-// }
 pub type __off_t = libc::c_long;
 pub type __off64_t = libc::c_long;
 pub type size_t = libc::c_ulong;
@@ -52,16 +46,24 @@ pub unsafe extern "C" fn alpha_char_strcmp(
 }
 #[no_mangle]
 pub unsafe extern "C" fn alpha_map_new() -> *mut AlphaMap {
-    let alpha_map = AlphaMap::new_boxed();
-    return Box::into_raw(alpha_map);
+    let alpha_map = AlphaMap::new();
+    return Box::into_raw(Box::new(alpha_map));
 }
 #[no_mangle]
-pub unsafe extern "C" fn alpha_map_clone(mut a_map: *const AlphaMap) -> *mut AlphaMap {
-    return datrie::alpha_map::alpha_map_clone(a_map);
+pub extern "C" fn alpha_map_clone(mut a_map: *const AlphaMap) -> *mut AlphaMap {
+    if a_map.is_null() {
+        return std::ptr::null_mut();
+    }
+    let a_map = unsafe { &*a_map };
+    let alpha_map = a_map.clone();
+    return Box::into_raw(Box::new(alpha_map));
 }
 #[no_mangle]
-pub unsafe extern "C" fn alpha_map_free(mut alpha_map: *mut AlphaMap) {
-    drop_boxed(Box::from_raw(alpha_map));
+pub extern "C" fn alpha_map_free(mut alpha_map: *mut AlphaMap) {
+    if alpha_map.is_null() {
+        return;
+    }
+    unsafe { drop(Box::from_raw(alpha_map)) };
 }
 #[no_mangle]
 pub unsafe extern "C" fn alpha_map_add_range(
@@ -69,5 +71,9 @@ pub unsafe extern "C" fn alpha_map_add_range(
     mut begin: AlphaChar,
     mut end: AlphaChar,
 ) -> libc::c_int {
-    return datrie::alpha_map::alpha_map_add_range(alpha_map, begin, end);
+    if alpha_map.is_null() {
+        return 0;
+    }
+    let alpha_map = unsafe { &mut *alpha_map };
+    return alpha_map.add_range(begin, end);
 }

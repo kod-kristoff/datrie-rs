@@ -8,3 +8,4 @@
 *.lo
 */.deps/
 */.libs/
+/dist/
