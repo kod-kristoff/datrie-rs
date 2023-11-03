@@ -496,14 +496,23 @@ impl AlphaMap {
     pub unsafe fn add_range(
         &mut self,
         // mut alpha_map: *mut AlphaMap,
-        mut begin: AlphaChar,
-        mut end: AlphaChar,
-    ) -> libc::c_int {
-        let mut res: libc::c_int = alpha_map_add_range_only(self, begin, end);
+        begin: AlphaChar,
+        end: AlphaChar,
+    ) -> DatrieResult<()> {
+        let res: libc::c_int = alpha_map_add_range_only(self, begin, end);
         if res != 0 as libc::c_int {
-            return res;
+            return Err(DatrieError::new(
+                ErrorKind::Bug,
+                format!("add_range_only returned '{res}'"),
+            ));
         }
-        return alpha_map_recalc_work_area(self);
+        match alpha_map_recalc_work_area(self) {
+            0 => Ok(()),
+            res => Err(DatrieError::new(
+                ErrorKind::Bug,
+                format!("add_range_only returned '{res}'"),
+            )),
+        }
     }
 }
 pub unsafe fn alpha_map_char_to_trie(

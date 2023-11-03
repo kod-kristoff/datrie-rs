@@ -15,6 +15,8 @@ pub type int32 = libc::c_int;
 // pub type AlphaChar = uint32;
 pub type TrieChar = libc::c_uchar;
 pub type TrieIndex = int32;
+pub const DA_OK: libc::c_int = 0;
+pub const DA_ERR: libc::c_int = -1;
 #[no_mangle]
 pub unsafe extern "C" fn alpha_char_strlen(mut str: *const AlphaChar) -> libc::c_int {
     let mut p: *const AlphaChar = 0 as *const AlphaChar;
@@ -72,8 +74,11 @@ pub unsafe extern "C" fn alpha_map_add_range(
     mut end: AlphaChar,
 ) -> libc::c_int {
     if alpha_map.is_null() {
-        return 0;
+        return DA_OK;
     }
     let alpha_map = unsafe { &mut *alpha_map };
-    return alpha_map.add_range(begin, end);
+    match alpha_map.add_range(begin, end) {
+        Ok(_) => DA_OK,
+        Err(_) => DA_ERR,
+    }
 }
