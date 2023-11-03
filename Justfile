@@ -7,5 +7,8 @@ headers:
 
 dist: headers
 
-check: debug dist
+rust_check:
+	cargo test --all -- --show-output
+
+check: debug dist rust_check
 	just tests/check

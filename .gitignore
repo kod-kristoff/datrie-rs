@@ -9,3 +9,4 @@
 */.deps/
 */.libs/
 /dist/
+src/lib/test*.tri

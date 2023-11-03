@@ -29,6 +29,7 @@ pub type TrieChar = libc::c_uchar;
 pub type TrieIndex = int32;
 // #[derive(Copy, Clone)]
 // #[repr(C)]
+#[derive(Debug)]
 pub struct AlphaMap {
     pub first_range: *mut AlphaRange,
     pub alpha_begin: AlphaChar,
@@ -38,7 +39,7 @@ pub struct AlphaMap {
     pub trie_map_sz: libc::c_int,
     pub trie_to_alpha_map: *mut AlphaChar,
 }
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 // #[repr(C)]
 pub struct AlphaRange {
     pub next: *mut AlphaRange,

@@ -133,6 +133,10 @@ pub unsafe extern "C" fn trie_enumerate(
 }
 #[no_mangle]
 pub unsafe extern "C" fn trie_root(mut trie: *const Trie) -> *mut TrieState {
+    if trie.is_null() {
+        return std::ptr::null_mut();
+    }
+    let trie = unsafe { &*trie };
     return Trie::root(trie);
 }
 #[no_mangle]

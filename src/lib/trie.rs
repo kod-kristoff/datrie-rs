@@ -25,6 +25,7 @@ pub type TrieData = int32;
 pub type FILE = libc::FILE;
 // #[derive(Copy, Clone)]
 // #[repr(C)]
+#[derive(Debug)]
 pub struct Trie {
     pub alpha_map: Box<AlphaMap>,
     pub da: *mut DArray,
@@ -230,6 +231,8 @@ impl Trie {
         mut data: TrieData,
         mut is_overwrite: Bool,
     ) -> Bool {
+        dbg!(&*trie);
+        dbg!(&*key);
         let mut s: TrieIndex = 0;
         let mut t: TrieIndex = 0;
         let mut suffix_idx: libc::c_short = 0;
@@ -422,7 +425,7 @@ impl Trie {
         let mut root: *mut TrieState = 0 as *mut TrieState;
         let mut iter: *mut TrieIterator = 0 as *mut TrieIterator;
         let mut cont: Bool = DA_TRUE;
-        root = Trie::root(trie);
+        root = Trie::root(&*trie);
         if root.is_null() as libc::c_int as libc::c_long != 0 {
             return DA_FALSE;
         }
@@ -446,10 +449,10 @@ impl Trie {
         };
     }
 
-    pub unsafe fn root(mut trie: *const Trie) -> *mut TrieState {
+    pub unsafe fn root(&self) -> *mut TrieState {
         return TrieState::new(
-            trie,
-            da_get_root((*trie).da),
+            &*self,
+            da_get_root((*self).da),
             0 as libc::c_int as libc::c_short,
             DA_FALSE as libc::c_int as libc::c_short,
         );
@@ -532,6 +535,10 @@ impl TrieState {
                 .offset((*s).suffix_idx as isize) as libc::c_int
                 == tc as TrieChar as libc::c_int) as libc::c_int as Bool;
         };
+    }
+
+    pub unsafe fn is_terminal(s: *const TrieState) -> bool {
+        TrieState::is_walkable(s, 0) == DA_TRUE
     }
 
     pub unsafe fn walkable_chars(
