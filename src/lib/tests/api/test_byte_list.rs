@@ -55,11 +55,11 @@ unsafe fn dump_key_data(key: *const AlphaChar, data: TrieData) {
     print!("[");
     let mut p = key;
     while *p != 0 {
-        if (p != key) {
+        if p != key {
             print!(", ");
         }
         print!("{}", *p);
-        p.offset(1);
+        p = p.offset(1);
     }
     print!("] : {}\n", data);
 }

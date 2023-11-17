@@ -17,21 +17,20 @@ pub struct TrieString {
     pub ds: DString,
 }
 #[no_mangle]
-pub unsafe extern "C" fn trie_char_strlen(mut str: *const TrieChar) -> size_t {
+pub extern "C" fn trie_char_strlen(mut str: *const TrieChar) -> size_t {
     let mut len: size_t = 0 as libc::c_int as size_t;
     loop {
         let fresh0 = str;
-        str = str.offset(1);
-        if !(*fresh0 as libc::c_int != '\0' as i32) {
+        str = unsafe { str.offset(1) };
+        if !(unsafe { *fresh0 } as libc::c_int != '\0' as i32) {
             break;
         }
         len = len.wrapping_add(1);
-        len;
     }
     return len;
 }
 #[no_mangle]
-pub unsafe extern "C" fn trie_char_strsize(mut str: *const TrieChar) -> size_t {
+pub extern "C" fn trie_char_strsize(str: *const TrieChar) -> size_t {
     return (trie_char_strlen(str))
         .wrapping_mul(::core::mem::size_of::<TrieChar>() as libc::c_ulong);
 }

@@ -49,12 +49,10 @@ pub struct AlphaRange {
     pub begin: AlphaChar,
     pub end: AlphaChar,
 }
-pub unsafe fn alpha_char_strlen(mut str: *const AlphaChar) -> libc::c_int {
-    let mut p: *const AlphaChar = 0 as *const AlphaChar;
-    p = str;
+pub unsafe fn alpha_char_strlen(str: *const AlphaChar) -> libc::c_int {
+    let mut p: *const AlphaChar = str;
     while *p != 0 {
         p = p.offset(1);
-        p;
     }
     return p.offset_from(str) as libc::c_long as libc::c_int;
 }
@@ -64,9 +62,7 @@ pub unsafe fn alpha_char_strcmp(
 ) -> libc::c_int {
     while *str1 != 0 && *str1 == *str2 {
         str1 = str1.offset(1);
-        str1;
         str2 = str2.offset(1);
-        str2;
     }
     if *str1 < *str2 {
         return -(1 as libc::c_int);
@@ -256,26 +252,11 @@ impl AlphaMap {
         Ok(())
     }
 }
-unsafe fn alpha_map_get_total_ranges(mut alpha_map: *const AlphaMap) -> libc::c_int {
-    let mut n: libc::c_int = 0;
-    let mut range: *mut AlphaRange = 0 as *mut AlphaRange;
-    n = 0 as libc::c_int;
-    range = (*alpha_map).first_range;
-    while !range.is_null() {
-        n += 1;
-        n;
-        range = (*range).next;
-    }
-    return n;
-}
 
-pub unsafe fn alpha_map_fwrite_bin(
-    mut alpha_map: *const AlphaMap,
-    mut file: *mut FILE,
-) -> libc::c_int {
+pub unsafe fn alpha_map_fwrite_bin(alpha_map: *const AlphaMap, file: *mut FILE) -> libc::c_int {
     let mut range: *mut AlphaRange = 0 as *mut AlphaRange;
     if file_write_int32(file, 0xd9fcd9fc as libc::c_uint as int32) as u64 == 0
-        || file_write_int32(file, alpha_map_get_total_ranges(alpha_map)) as u64 == 0
+        || file_write_int32(file, AlphaMap::get_total_ranges(&*alpha_map) as i32) as u64 == 0
     {
         return -(1 as libc::c_int);
     }
@@ -290,22 +271,29 @@ pub unsafe fn alpha_map_fwrite_bin(
     }
     return 0 as libc::c_int;
 }
-
-pub unsafe fn alpha_map_get_serialized_size(mut alpha_map: *const AlphaMap) -> size_t {
-    let mut ranges_count: int32 = alpha_map_get_total_ranges(alpha_map);
-    return (4 as libc::c_int as libc::c_ulong)
-        .wrapping_add(::core::mem::size_of::<int32>() as libc::c_ulong)
-        .wrapping_add(
-            (::core::mem::size_of::<AlphaChar>() as libc::c_ulong)
-                .wrapping_mul(2 as libc::c_int as libc::c_ulong)
-                .wrapping_mul(ranges_count as libc::c_ulong),
-        );
+impl AlphaMap {
+    const SIGNATURE_SIZE: usize = 4;
+    pub fn get_serialized_size(&self) -> usize {
+        let ranges_count = self.get_total_ranges();
+        return Self::SIGNATURE_SIZE
+            + ::core::mem::size_of::<int32>()
+            + (::core::mem::size_of::<AlphaChar>() * 2 * ranges_count);
+    }
+    fn get_total_ranges(&self) -> usize {
+        let mut n = 0;
+        let mut range = self.first_range;
+        while !range.is_null() {
+            n += 1;
+            range = unsafe { (*range).next };
+        }
+        return n;
+    }
 }
 
-pub unsafe fn alpha_map_serialize_bin(mut alpha_map: *const AlphaMap, mut ptr: *mut *mut uint8) {
+pub unsafe fn alpha_map_serialize_bin(alpha_map: *const AlphaMap, mut ptr: *mut *mut uint8) {
     let mut range: *mut AlphaRange = 0 as *mut AlphaRange;
     serialize_int32_be_incr(ptr, 0xd9fcd9fc as libc::c_uint as int32);
-    serialize_int32_be_incr(ptr, alpha_map_get_total_ranges(alpha_map));
+    serialize_int32_be_incr(ptr, AlphaMap::get_total_ranges(&*alpha_map) as i32);
     range = (*alpha_map).first_range;
     while !range.is_null() {
         serialize_int32_be_incr(ptr, (*range).begin as int32);
@@ -634,7 +622,7 @@ pub unsafe fn alpha_map_char_to_trie_str(
 }
 
 pub unsafe fn alpha_map_trie_to_char_str(
-    mut alpha_map: *const AlphaMap,
+    alpha_map: *const AlphaMap,
     mut str: *const TrieChar,
 ) -> *mut AlphaChar {
     let mut alpha_str: *mut AlphaChar = 0 as *mut AlphaChar;
@@ -651,10 +639,33 @@ pub unsafe fn alpha_map_trie_to_char_str(
     while *str != 0 {
         *p = alpha_map_trie_to_char(alpha_map, *str);
         p = p.offset(1);
-        p;
         str = str.offset(1);
-        str;
     }
     *p = 0 as libc::c_int as AlphaChar;
     return alpha_str;
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::DatrieResult;
+
+    use super::AlphaMap;
+
+    #[test]
+    fn get_serialized_size_works() -> DatrieResult<()> {
+        let mut alpha_map = AlphaMap::new();
+        alpha_map.add_range(0x00, 0xff)?;
+        let size = alpha_map.get_serialized_size();
+        assert_eq!(size, 16);
+        Ok(())
+    }
+
+    #[test]
+    fn get_total_ranges_works() -> DatrieResult<()> {
+        let mut alpha_map = AlphaMap::new();
+        alpha_map.add_range(0x00, 0xff)?;
+        let size = alpha_map.get_total_ranges();
+        assert_eq!(size, 1);
+        Ok(())
+    }
 }

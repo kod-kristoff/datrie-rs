@@ -1,7 +1,7 @@
 use std::path::Path;
 use std::{fs, io};
 
-use crate::fileutils::{ReadExt, ReadSeekExt};
+use crate::fileutils::ReadExt;
 use crate::{alpha_map::*, darray::*, tail::*};
 use crate::{trie_string::*, DatrieError, DatrieResult, ErrorKind};
 use ::libc;
@@ -75,7 +75,7 @@ impl Trie {
     }
 
     pub unsafe fn new_from_file(path: *const libc::c_char) -> DatrieResult<Trie> {
-        let mut trie_file = fopen(path, b"rb\0" as *const u8 as *const libc::c_char);
+        let trie_file = fopen(path, b"rb\0" as *const u8 as *const libc::c_char);
         if trie_file.is_null() {
             return Err(DatrieError::new(
                 ErrorKind::Io,
@@ -160,12 +160,21 @@ impl Trie {
         self.serialize_safe(&mut file)?;
         Ok(())
     }
-    pub unsafe fn get_serialized_size(mut trie: *mut Trie) -> size_t {
-        return (alpha_map_get_serialized_size((*trie).alpha_map.as_ref()))
-            .wrapping_add(da_get_serialized_size((*trie).da))
-            .wrapping_add(tail_get_serialized_size((*trie).tail));
+    // pub unsafe fn get_serialized_size(trie: *const Trie) -> size_t {
+    //     return (alpha_map_get_serialized_size((*trie).alpha_map.as_ref()))
+    //         .wrapping_add(da_get_serialized_size((*trie).da))
+    //         .wrapping_add(tail_get_serialized_size((*trie).tail));
+    // }
+    pub fn get_serialized_size(&self) -> usize {
+        let da: &DArray = unsafe { &*self.da };
+        let tail: &Tail = unsafe { &*self.tail };
+        return self
+            .alpha_map
+            .get_serialized_size()
+            .wrapping_add(da.get_serialized_size())
+            .wrapping_add(tail.get_serialized_size());
     }
-    pub unsafe fn serialize(mut trie: *mut Trie, mut ptr: *mut uint8) {
+    pub unsafe fn serialize(trie: *mut Trie, ptr: *mut uint8) {
         let mut ptr1: *mut uint8 = ptr;
         alpha_map_serialize_bin((*trie).alpha_map.as_ref(), &mut ptr1);
         da_serialize((*trie).da, &mut ptr1);
@@ -173,7 +182,7 @@ impl Trie {
         (*trie).is_dirty = DA_FALSE;
     }
     pub fn serialize_safe(&mut self, write: &mut dyn std::io::Write) -> DatrieResult<()> {
-        let size = unsafe { Self::get_serialized_size(self as *mut Trie) } as usize;
+        let size = self.get_serialized_size();
         let buf: Vec<u8> = Vec::with_capacity(size);
         let mut buf = std::mem::ManuallyDrop::new(buf);
         let buf_cap = buf.capacity();
@@ -185,7 +194,7 @@ impl Trie {
         write.write_all(&buf)?;
         Ok(())
     }
-    pub unsafe fn fwrite(mut trie: *mut Trie, mut file: *mut FILE) -> libc::c_int {
+    pub unsafe fn fwrite(trie: *mut Trie, file: *mut FILE) -> libc::c_int {
         if alpha_map_fwrite_bin((*trie).alpha_map.as_ref(), file) != 0 as libc::c_int {
             return -(1 as libc::c_int);
         }
@@ -198,7 +207,7 @@ impl Trie {
         (*trie).is_dirty = DA_FALSE;
         return 0 as libc::c_int;
     }
-    pub unsafe fn is_dirty(mut trie: *const Trie) -> Bool {
+    pub unsafe fn is_dirty(trie: *const Trie) -> Bool {
         return (*trie).is_dirty;
     }
     pub unsafe fn retrieve(
@@ -247,29 +256,21 @@ impl Trie {
         return DA_TRUE;
     }
 
-    pub unsafe fn store(
-        mut trie: *mut Trie,
-        mut key: *const AlphaChar,
-        mut data: TrieData,
-    ) -> Bool {
+    pub unsafe fn store(trie: *mut Trie, key: *const AlphaChar, data: TrieData) -> Bool {
         return Trie::store_conditionally(trie, key, data, DA_TRUE);
     }
 
-    pub unsafe fn store_if_absent(
-        mut trie: *mut Trie,
-        mut key: *const AlphaChar,
-        mut data: TrieData,
-    ) -> Bool {
+    pub unsafe fn store_if_absent(trie: *mut Trie, key: *const AlphaChar, data: TrieData) -> Bool {
         return Trie::store_conditionally(trie, key, data, DA_FALSE);
     }
     unsafe fn store_conditionally(
-        mut trie: *mut Trie,
-        mut key: *const AlphaChar,
-        mut data: TrieData,
-        mut is_overwrite: Bool,
+        trie: *mut Trie,
+        key: *const AlphaChar,
+        data: TrieData,
+        is_overwrite: Bool,
     ) -> Bool {
-        dbg!(&*trie);
-        dbg!(&*key);
+        // dbg!(&*trie);
+        // dbg!(&*key);
         let mut s: TrieIndex = 0;
         let mut t: TrieIndex = 0;
         let mut suffix_idx: libc::c_short = 0;
@@ -752,8 +753,8 @@ impl TrieIterator {
         return alpha_key;
     }
 
-    pub unsafe fn get_data(mut iter: *const TrieIterator) -> TrieData {
-        let mut s: *const TrieState = (*iter).state;
+    pub unsafe fn get_data(iter: *const TrieIterator) -> TrieData {
+        let s: *const TrieState = (*iter).state;
         let mut tail_index: TrieIndex = 0;
         if s.is_null() {
             return -(1 as libc::c_int);
@@ -767,5 +768,21 @@ impl TrieIterator {
             tail_index = (*s).index;
         }
         return tail_get_data((*(*s).trie).tail, tail_index);
+    }
+}
+#[cfg(test)]
+mod tests {
+    use crate::{trie::Trie, DatrieResult};
+
+    use crate::alpha_map::AlphaMap;
+
+    #[test]
+    fn get_serialized_size_works() -> DatrieResult<()> {
+        let mut alpha_map = AlphaMap::new();
+        alpha_map.add_range(0x00, 0xff)?;
+        let trie = Trie::new(&alpha_map)?;
+        let size = trie.get_serialized_size();
+        assert_eq!(size, 52);
+        Ok(())
     }
 }

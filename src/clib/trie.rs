@@ -80,8 +80,12 @@ pub unsafe extern "C" fn trie_save(
     // }
 }
 #[no_mangle]
-pub unsafe extern "C" fn trie_get_serialized_size(mut trie: *mut Trie) -> size_t {
-    return Trie::get_serialized_size(trie);
+pub extern "C" fn trie_get_serialized_size(trie: *const Trie) -> size_t {
+    if trie.is_null() {
+        return 0;
+    }
+    let trie = unsafe { &*trie };
+    return trie.get_serialized_size() as size_t;
 }
 #[no_mangle]
 pub unsafe extern "C" fn trie_serialize(mut trie: *mut Trie, mut ptr: *mut uint8) {

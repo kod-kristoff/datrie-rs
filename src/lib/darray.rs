@@ -3,7 +3,7 @@ use std::io::{self, SeekFrom};
 use ::libc;
 
 use crate::{
-    fileutils::{ReadExt, ReadSeekExt},
+    fileutils::ReadExt,
     trie_string::{trie_string_append_char, trie_string_cut_last, TrieString},
     DatrieError, DatrieResult,
 };
@@ -60,10 +60,10 @@ unsafe extern "C" fn symbols_new() -> *mut Symbols {
     return syms;
 }
 #[no_mangle]
-pub unsafe extern "C" fn symbols_free(mut syms: *mut Symbols) {
+pub unsafe extern "C" fn symbols_free(syms: *mut Symbols) {
     free(syms as *mut libc::c_void);
 }
-unsafe extern "C" fn symbols_add(mut syms: *mut Symbols, mut c: TrieChar) {
+unsafe extern "C" fn symbols_add(syms: *mut Symbols, mut c: TrieChar) {
     let mut lower: libc::c_short = 0;
     let mut upper: libc::c_short = 0;
     lower = 0 as libc::c_int as libc::c_short;
@@ -97,17 +97,44 @@ unsafe extern "C" fn symbols_add(mut syms: *mut Symbols, mut c: TrieChar) {
     (*syms).num_symbols;
 }
 #[no_mangle]
-pub unsafe extern "C" fn symbols_num(mut syms: *const Symbols) -> libc::c_int {
+pub unsafe extern "C" fn symbols_num(syms: *const Symbols) -> libc::c_int {
     return (*syms).num_symbols as libc::c_int;
 }
 #[no_mangle]
-pub unsafe extern "C" fn symbols_get(mut syms: *const Symbols, mut index: libc::c_int) -> TrieChar {
+pub unsafe extern "C" fn symbols_get(syms: *const Symbols, index: libc::c_int) -> TrieChar {
     return (*syms).symbols[index as usize];
+}
+impl DArray {
+    pub fn new() -> DatrieResult<DArray> {
+        let num_cells = 3;
+        let cells = unsafe {
+            malloc(
+                (num_cells as libc::c_ulong)
+                    .wrapping_mul(::core::mem::size_of::<DACell>() as libc::c_ulong),
+            ) as *mut DACell
+        };
+        if cells.is_null() {
+            return Err(DatrieError::new(
+                crate::ErrorKind::Memory,
+                "DArray::new malloc failed".into(),
+            ));
+        }
+
+        unsafe {
+            (*cells.offset(0 as libc::c_int as isize)).base =
+                0xdafcdafc as libc::c_uint as TrieIndex;
+            (*cells.offset(0 as libc::c_int as isize)).check = num_cells;
+            (*cells.offset(1 as libc::c_int as isize)).base = -(1 as libc::c_int);
+            (*cells.offset(1 as libc::c_int as isize)).check = -(1 as libc::c_int);
+            (*cells.offset(2 as libc::c_int as isize)).base = 3 as libc::c_int;
+            (*cells.offset(2 as libc::c_int as isize)).check = 0 as libc::c_int;
+        }
+        Ok(DArray { num_cells, cells })
+    }
 }
 #[no_mangle]
 pub unsafe extern "C" fn da_new() -> *mut DArray {
-    let mut d: *mut DArray = 0 as *mut DArray;
-    d = malloc(::core::mem::size_of::<DArray>() as libc::c_ulong) as *mut DArray;
+    let d: *mut DArray = malloc(::core::mem::size_of::<DArray>() as libc::c_ulong) as *mut DArray;
     if d.is_null() as libc::c_int as libc::c_long != 0 {
         return 0 as *mut DArray;
     }
@@ -230,7 +257,7 @@ impl DArray {
     }
 }
 #[no_mangle]
-pub unsafe extern "C" fn da_fread(mut file: *mut FILE) -> *mut DArray {
+pub unsafe extern "C" fn da_fread(file: *mut FILE) -> *mut DArray {
     let mut current_block: u64;
     let mut save_pos: libc::c_long = 0;
     let mut d: *mut DArray = 0 as *mut DArray;
@@ -271,7 +298,6 @@ pub unsafe extern "C" fn da_fread(mut file: *mut FILE) -> *mut DArray {
                                 break;
                             }
                             n += 1;
-                            n;
                         }
                         match current_block {
                             11050875288958768710 => return d,
@@ -289,14 +315,13 @@ pub unsafe extern "C" fn da_fread(mut file: *mut FILE) -> *mut DArray {
     return 0 as *mut DArray;
 }
 #[no_mangle]
-pub unsafe extern "C" fn da_free(mut d: *mut DArray) {
+pub unsafe extern "C" fn da_free(d: *mut DArray) {
     free((*d).cells as *mut libc::c_void);
     free(d as *mut libc::c_void);
 }
 #[no_mangle]
-pub unsafe extern "C" fn da_fwrite(mut d: *const DArray, mut file: *mut FILE) -> libc::c_int {
+pub unsafe extern "C" fn da_fwrite(d: *const DArray, file: *mut FILE) -> libc::c_int {
     let mut i: TrieIndex = 0;
-    i = 0 as libc::c_int;
     while i < (*d).num_cells {
         if file_write_int32(file, (*((*d).cells).offset(i as isize)).base) as u64 == 0
             || file_write_int32(file, (*((*d).cells).offset(i as isize)).check) as u64 == 0
@@ -304,35 +329,33 @@ pub unsafe extern "C" fn da_fwrite(mut d: *const DArray, mut file: *mut FILE) ->
             return -(1 as libc::c_int);
         }
         i += 1;
-        i;
     }
     return 0 as libc::c_int;
 }
-#[no_mangle]
-pub unsafe extern "C" fn da_get_serialized_size(mut d: *const DArray) -> size_t {
-    if (*d).num_cells > 0 as libc::c_int {
-        return (4 as libc::c_int * (*d).num_cells * 2 as libc::c_int) as size_t;
-    } else {
-        return 0 as libc::c_int as size_t;
-    };
+impl DArray {
+    pub fn get_serialized_size(&self) -> usize {
+        if self.num_cells > 0 {
+            return 4 * self.num_cells as usize * 2;
+        } else {
+            return 0;
+        }
+    }
 }
 #[no_mangle]
-pub unsafe extern "C" fn da_serialize(mut d: *const DArray, mut ptr: *mut *mut uint8) {
+pub unsafe extern "C" fn da_serialize(d: *const DArray, ptr: *mut *mut uint8) {
     let mut i: TrieIndex = 0;
-    i = 0 as libc::c_int;
     while i < (*d).num_cells {
         serialize_int32_be_incr(ptr, (*((*d).cells).offset(i as isize)).base);
         serialize_int32_be_incr(ptr, (*((*d).cells).offset(i as isize)).check);
         i += 1;
-        i;
     }
 }
 #[no_mangle]
-pub unsafe extern "C" fn da_get_root(mut d: *const DArray) -> TrieIndex {
+pub unsafe extern "C" fn da_get_root(d: *const DArray) -> TrieIndex {
     return 2 as libc::c_int;
 }
 #[no_mangle]
-pub unsafe extern "C" fn da_get_base(mut d: *const DArray, mut s: TrieIndex) -> TrieIndex {
+pub unsafe extern "C" fn da_get_base(d: *const DArray, s: TrieIndex) -> TrieIndex {
     return if (s < (*d).num_cells) as libc::c_int as libc::c_long != 0 {
         (*((*d).cells).offset(s as isize)).base
     } else {
@@ -630,7 +653,7 @@ unsafe extern "C" fn da_alloc_cell(mut d: *mut DArray, mut cell: TrieIndex) {
     da_set_check(d, prev, -next);
     da_set_base(d, next, -prev);
 }
-unsafe extern "C" fn da_free_cell(mut d: *mut DArray, mut cell: TrieIndex) {
+unsafe extern "C" fn da_free_cell(d: *mut DArray, cell: TrieIndex) {
     let mut i: TrieIndex = 0;
     let mut prev: TrieIndex = 0;
     i = -da_get_check(d, 1 as libc::c_int);
@@ -645,9 +668,9 @@ unsafe extern "C" fn da_free_cell(mut d: *mut DArray, mut cell: TrieIndex) {
 }
 #[no_mangle]
 pub unsafe extern "C" fn da_first_separate(
-    mut d: *mut DArray,
+    d: *mut DArray,
     mut root: TrieIndex,
-    mut keybuff: *mut TrieString,
+    keybuff: *mut TrieString,
 ) -> TrieIndex {
     let mut base: TrieIndex = 0;
     let mut c: TrieIndex = 0;
@@ -712,4 +735,20 @@ pub unsafe extern "C" fn da_next_separate(
         sep = parent;
     }
     return 0 as libc::c_int;
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::DatrieResult;
+
+    use super::DArray;
+
+    #[test]
+    fn get_serialized_size_works() -> DatrieResult<()> {
+        let da = DArray::new()?;
+        // da.add_range(0x00, 0xff)?;
+        let size = da.get_serialized_size();
+        assert_eq!(size, 24);
+        Ok(())
+    }
 }

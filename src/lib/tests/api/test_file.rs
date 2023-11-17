@@ -51,12 +51,12 @@ extern "C" fn trie_enum_mark_rec(
     let enum_data = user_data as *mut EnumData;
 
     let src_data = unsafe { dict_src_get_data(&(*enum_data).dict_src, key) };
-    if (TRIE_DATA_ERROR == src_data) {
+    if TRIE_DATA_ERROR == src_data {
         println!("Extra entry in file: key '{:?}', data {}.\n", key, key_data);
         unsafe {
             *(*enum_data).is_failed = true;
         }
-    } else if (src_data != key_data) {
+    } else if src_data != key_data {
         println!(
             "Data mismatch for: key '{:?}', expected {}, got {}.\n",
             key, src_data, key_data
@@ -125,7 +125,7 @@ fn test_file() -> DatrieResult<()> {
         }
         /* check for unmarked entries, (i.e. missed in file) */
         for dict_p in dict_src {
-            if (dict_p.data != TRIE_DATA_READ) {
+            if dict_p.data != TRIE_DATA_READ {
                 println!(
                     "Entry missed in file: key '{:?}', data {}.\n",
                     dict_p.key, dict_p.data
@@ -133,7 +133,7 @@ fn test_file() -> DatrieResult<()> {
                 is_failed = true;
             }
         }
-        if (is_failed) {
+        if is_failed {
             panic!("Errors found in trie saved contents.\n");
         }
 
@@ -147,7 +147,7 @@ fn test_save_file_and_reload() -> DatrieResult<()> {
     let dir = tempdir().unwrap();
 
     msg_step("Preparing trie");
-    let mut test_trie = unsafe { en_trie_new()? };
+    let mut test_trie = en_trie_new()?;
 
     /* add/remove some words */
     let mut dict_src = get_dict_src();
@@ -198,7 +198,7 @@ fn test_save_file_and_reload() -> DatrieResult<()> {
         }
         /* check for unmarked entries, (i.e. missed in file) */
         for dict_p in dict_src {
-            if (dict_p.data != TRIE_DATA_READ) {
+            if dict_p.data != TRIE_DATA_READ {
                 println!(
                     "Entry missed in file: key '{:?}', data {}.\n",
                     dict_p.key, dict_p.data
@@ -206,7 +206,7 @@ fn test_save_file_and_reload() -> DatrieResult<()> {
                 is_failed = true;
             }
         }
-        if (is_failed) {
+        if is_failed {
             panic!("Errors found in trie saved contents.\n");
         }
 

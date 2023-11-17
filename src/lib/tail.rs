@@ -1,9 +1,10 @@
 use std::io::{self, SeekFrom};
 
 use ::libc;
+use core::mem::size_of;
 
 use crate::{
-    fileutils::{ReadExt, ReadSeekExt},
+    fileutils::ReadExt,
     trie_string::{trie_char_strdup, trie_char_strlen, trie_char_strsize},
     DatrieError, DatrieResult,
 };
@@ -52,10 +53,19 @@ pub struct TailBlock {
     pub data: TrieData,
     pub suffix: *mut TrieChar,
 }
+
+impl Tail {
+    pub fn new() -> Tail {
+        Tail {
+            num_tails: 0,
+            tails: std::ptr::null_mut(),
+            first_free: 0,
+        }
+    }
+}
 #[no_mangle]
 pub unsafe extern "C" fn tail_new() -> *mut Tail {
-    let mut t: *mut Tail = 0 as *mut Tail;
-    t = malloc(::core::mem::size_of::<Tail>() as libc::c_ulong) as *mut Tail;
+    let t: *mut Tail = malloc(::core::mem::size_of::<Tail>() as libc::c_ulong) as *mut Tail;
     if t.is_null() as libc::c_int as libc::c_long != 0 {
         return 0 as *mut Tail;
     }
@@ -317,7 +327,6 @@ pub unsafe extern "C" fn tail_free(mut t: *mut Tail) {
                 free((*((*t).tails).offset(i as isize)).suffix as *mut libc::c_void);
             }
             i += 1;
-            i;
         }
         free((*t).tails as *mut libc::c_void);
     }
@@ -363,37 +372,30 @@ pub unsafe extern "C" fn tail_fwrite(mut t: *const Tail, mut file: *mut FILE) ->
     }
     return 0 as libc::c_int;
 }
-#[no_mangle]
-pub unsafe extern "C" fn tail_get_serialized_size(mut t: *const Tail) -> size_t {
-    let mut static_count: size_t = (::core::mem::size_of::<int32>() as libc::c_ulong)
-        .wrapping_add(::core::mem::size_of::<TrieIndex>() as libc::c_ulong)
-        .wrapping_add(::core::mem::size_of::<TrieIndex>() as libc::c_ulong);
-    let mut dynamic_count: size_t = 0 as libc::c_uint as size_t;
-    if (*t).num_tails > 0 as libc::c_int {
-        let mut i: TrieIndex = 0 as libc::c_int;
-        dynamic_count = (dynamic_count as libc::c_ulong).wrapping_add(
-            (::core::mem::size_of::<TrieIndex>() as libc::c_ulong)
-                .wrapping_add(::core::mem::size_of::<TrieData>() as libc::c_ulong)
-                .wrapping_add(::core::mem::size_of::<int16>() as libc::c_ulong)
-                .wrapping_mul((*t).num_tails as libc::c_ulong),
-        ) as size_t as size_t;
-        while i < (*t).num_tails {
-            if !((*((*t).tails).offset(i as isize)).suffix).is_null() {
-                dynamic_count = (dynamic_count as libc::c_ulong)
-                    .wrapping_add(trie_char_strsize((*((*t).tails).offset(i as isize)).suffix))
-                    as size_t as size_t;
+
+impl Tail {
+    pub fn get_serialized_size(&self) -> usize {
+        let static_count =
+            ::core::mem::size_of::<int32>() + 2 * ::core::mem::size_of::<TrieIndex>();
+        // dbg!(&static_count);
+        let mut dynamic_count: usize = 0;
+        if self.num_tails > 0 {
+            dynamic_count += (size_of::<TrieIndex>() + size_of::<TrieData>() + size_of::<int16>())
+                * self.num_tails as usize;
+            for i in 0..(self.num_tails as isize) {
+                let suffix = unsafe { (*self.tails.offset(i)).suffix };
+                if !suffix.is_null() {
+                    dynamic_count += trie_char_strsize(suffix) as usize;
+                }
             }
-            i += 1;
-            i;
         }
+        // dbg!(&dynamic_count);
+        return static_count + dynamic_count;
     }
-    return static_count.wrapping_add(dynamic_count);
 }
+
 #[no_mangle]
-pub unsafe extern "C" fn tail_serialize(
-    mut t: *const Tail,
-    mut ptr: *mut *mut uint8,
-) -> libc::c_int {
+pub unsafe extern "C" fn tail_serialize(t: *const Tail, ptr: *mut *mut uint8) -> libc::c_int {
     let mut i: TrieIndex = 0;
     serialize_int32_be_incr(ptr, 0xdffcdffc as libc::c_uint as int32);
     serialize_int32_be_incr(ptr, (*t).first_free);
@@ -599,9 +601,23 @@ pub unsafe extern "C" fn tail_walk_char(
     if suffix_char as libc::c_int == c as libc::c_int {
         if '\0' as i32 != suffix_char as libc::c_int {
             *suffix_idx += 1;
-            *suffix_idx;
         }
         return DA_TRUE;
     }
     return DA_FALSE;
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::DatrieResult;
+
+    use super::Tail;
+
+    #[test]
+    fn get_serialized_size_works() -> DatrieResult<()> {
+        let tail = Tail::new();
+        let size = tail.get_serialized_size();
+        assert_eq!(size, 12);
+        Ok(())
+    }
 }

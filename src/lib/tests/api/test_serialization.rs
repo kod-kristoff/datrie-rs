@@ -27,6 +27,7 @@ use datrie::{
     trie::{Trie, DA_TRUE},
     DatrieResult,
 };
+use tempfile::tempdir;
 
 use crate::utils::{en_trie_new, get_dict_src, msg_step};
 
@@ -34,12 +35,12 @@ const TRIE_FILENAME: &str = "test_serialization.tri";
 
 #[test]
 fn test_serialization() -> DatrieResult<()> {
-    unsafe {
-        msg_step("Preparing trie");
-        let mut test_trie = en_trie_new()?;
+    msg_step("Preparing trie");
+    let mut test_trie = en_trie_new()?;
 
-        /* add/remove some words */
-        let dict_src = get_dict_src();
+    /* add/remove some words */
+    let dict_src = get_dict_src();
+    unsafe {
         for dict_p in &dict_src {
             assert_eq!(
                 Trie::store(&mut test_trie, dict_p.key.as_ptr(), dict_p.data),
@@ -68,10 +69,11 @@ fn test_serialization() -> DatrieResult<()> {
         let buf: Vec<u8> = Vec::with_capacity(size as usize);
         msg_step("Serializing");
         let mut buf = std::mem::ManuallyDrop::new(buf);
-        let trieSerializedData = buf.as_mut_ptr();
+        let trie_serialized_data = buf.as_mut_ptr();
         let buf_cap = buf.capacity();
-        Trie::serialize(&mut test_trie, trieSerializedData);
-        let trieSerializedData = Vec::from_raw_parts(trieSerializedData, size as usize, buf_cap);
+        Trie::serialize(&mut test_trie, trie_serialized_data);
+        let trie_serialized_data =
+            Vec::from_raw_parts(trie_serialized_data, size as usize, buf_cap);
         msg_step("Serialized");
 
         let mut f = fs::File::open(TRIE_FILENAME)?;
@@ -79,20 +81,85 @@ fn test_serialization() -> DatrieResult<()> {
         let file_size = f.metadata().unwrap().len();
 
         assert_eq!(
-            size, file_size,
+            size, file_size as usize,
             "Trie serialized data doesn't match size of the file.\n"
         );
 
-        let mut trieFileData = Vec::new();
+        let mut trie_file_data = Vec::new();
         assert_eq!(
-            f.read_to_end(&mut trieFileData)?,
+            f.read_to_end(&mut trie_file_data)?,
             size as usize,
             "Failed to read back the serialized trie file.\n"
         );
         assert_eq!(
-            trieSerializedData, trieFileData,
+            trie_serialized_data, trie_file_data,
             "Trie serialized data doesn't match contents of the file.\n"
         );
     }
+    Ok(())
+}
+#[test]
+fn test_serialization_safe() -> DatrieResult<()> {
+    let dir = tempdir().unwrap();
+    msg_step("Preparing trie");
+    let mut test_trie = en_trie_new()?;
+
+    /* add/remove some words */
+    let dict_src = get_dict_src();
+    for dict_p in &dict_src {
+        unsafe {
+            assert_eq!(
+                Trie::store(&mut test_trie, dict_p.key.as_ptr(), dict_p.data),
+                DA_TRUE,
+                "Failed to add key '{:?}', data {}.\n",
+                dict_p.key,
+                dict_p.data
+            );
+        }
+    }
+
+    /* save & close */
+    msg_step("Saving trie to file");
+    let trie_filename = dir.path().join(TRIE_FILENAME);
+    assert!(
+        test_trie.save_safe(&trie_filename).is_ok(),
+        "Failed to save trie to file '{}'.\n",
+        trie_filename.display()
+    );
+
+    msg_step("Getting serialized trie size");
+    let size = test_trie.get_serialized_size();
+    println!("serialized trie size {}\n", size);
+    msg_step("Allocating");
+    let mut trie_serialized_data: Vec<u8> = Vec::with_capacity(size);
+    msg_step("Serializing");
+    // let mut buf = std::mem::ManuallyDrop::new(buf);
+    // let trie_serialized_data = buf.as_mut_ptr();
+    // let buf_cap = buf.capacity();
+    test_trie.serialize_safe(&mut trie_serialized_data)?;
+    // let trie_serialized_data = Vec::from_raw_parts(trie_serialized_data, size as usize, buf_cap);
+    msg_step("Serialized");
+
+    let mut f = fs::File::open(trie_filename)?;
+
+    let file_size = f.metadata().unwrap().len();
+
+    assert_eq!(
+        size as u64, file_size,
+        "Trie serialized data doesn't match size of the file.\n"
+    );
+
+    let mut trie_file_data = Vec::new();
+    assert_eq!(
+        f.read_to_end(&mut trie_file_data)?,
+        size as usize,
+        "Failed to read back the serialized trie file.\n"
+    );
+    assert_eq!(
+        trie_serialized_data, trie_file_data,
+        "Trie serialized data doesn't match contents of the file.\n"
+    );
+    // }
+    dir.close().unwrap();
     Ok(())
 }

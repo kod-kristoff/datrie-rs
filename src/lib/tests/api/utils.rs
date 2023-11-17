@@ -87,18 +87,17 @@ pub fn msg_step(msg: &str) {
 // /*-------------------------*
 //  *  Trie creation helpers  *
 //  *-------------------------*/
-pub unsafe fn en_alpha_map_new() -> DatrieResult<AlphaMap> {
+pub fn en_alpha_map_new() -> DatrieResult<AlphaMap> {
     let mut en_map = AlphaMap::new();
     en_map.add_range(0x0061, 0x007a)?;
 
     return Ok(en_map);
 }
 
-pub unsafe fn en_trie_new() -> DatrieResult<Trie> {
+pub fn en_trie_new() -> DatrieResult<Trie> {
     let en_map = en_alpha_map_new()?;
 
     let en_trie = Trie::new(&en_map)?;
-    dbg!(&en_trie);
     Ok(en_trie)
 }
 
