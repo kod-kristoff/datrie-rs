@@ -580,26 +580,25 @@ impl TrieState {
     }
 
     pub unsafe fn walkable_chars(
-        mut s: *const TrieState,
-        mut chars: *mut AlphaChar,
-        mut chars_nelm: libc::c_int,
+        s: *const TrieState,
+        chars: *mut AlphaChar,
+        chars_nelm: libc::c_int,
     ) -> libc::c_int {
-        let mut syms_num: libc::c_int = 0 as libc::c_int;
+        let syms_num: libc::c_int;
         if (*s).is_suffix == 0 {
-            let mut syms: *mut Symbols = da_output_symbols((*(*s).trie).da, (*s).index);
-            let mut i: libc::c_int = 0;
-            syms_num = symbols_num(syms);
-            i = 0 as libc::c_int;
+            // let syms = da_output_symbols((*(*s).trie).da, (*s).index);
+            let syms = (*(*(*s).trie).da).output_symbols((*s).index);
+            syms_num = syms.num() as libc::c_int;
+            let mut i = 0 as libc::c_int;
             while i < syms_num && i < chars_nelm {
-                let mut tc: TrieChar = symbols_get(syms, i);
+                let tc: TrieChar = syms.get(i as usize);
                 *chars.offset(i as isize) =
                     alpha_map_trie_to_char((*(*s).trie).alpha_map.as_ref(), tc);
                 i += 1;
-                i;
             }
-            symbols_free(syms);
+            // symbols_free(syms);
         } else {
-            let mut suffix: *const TrieChar = tail_get_suffix((*(*s).trie).tail, (*s).index);
+            let suffix: *const TrieChar = tail_get_suffix((*(*s).trie).tail, (*s).index);
             *chars.offset(0 as libc::c_int as isize) = alpha_map_trie_to_char(
                 (*(*s).trie).alpha_map.as_ref(),
                 *suffix.offset((*s).suffix_idx as isize),
@@ -609,11 +608,11 @@ impl TrieState {
         return syms_num;
     }
 
-    pub unsafe fn is_single(mut s: *const TrieState) -> Bool {
+    pub unsafe fn is_single(s: *const TrieState) -> Bool {
         return (*s).is_suffix as Bool;
     }
 
-    pub unsafe fn get_data(mut s: *const TrieState) -> TrieData {
+    pub unsafe fn get_data(s: *const TrieState) -> TrieData {
         if s.is_null() {
             return -(1 as libc::c_int);
         }
