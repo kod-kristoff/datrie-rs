@@ -378,26 +378,26 @@ impl DArray {
         };
     }
 }
-#[no_mangle]
-pub unsafe extern "C" fn da_get_root(_d: *const DArray) -> TrieIndex {
-    return 2 as libc::c_int;
-}
-#[no_mangle]
-pub unsafe extern "C" fn da_get_base(d: *const DArray, s: TrieIndex) -> TrieIndex {
-    return if (s < (*d).num_cells) as libc::c_int as libc::c_long != 0 {
-        (*((*d).cells).offset(s as isize)).base
-    } else {
-        0 as libc::c_int
-    };
-}
-#[no_mangle]
-pub unsafe extern "C" fn da_get_check(mut d: *const DArray, mut s: TrieIndex) -> TrieIndex {
-    return if (s < (*d).num_cells) as libc::c_int as libc::c_long != 0 {
-        (*((*d).cells).offset(s as isize)).check
-    } else {
-        0 as libc::c_int
-    };
-}
+// #[no_mangle]
+// pub unsafe extern "C" fn da_get_root(_d: *const DArray) -> TrieIndex {
+//     return 2 as libc::c_int;
+// }
+// #[no_mangle]
+// pub unsafe extern "C" fn da_get_base(d: *const DArray, s: TrieIndex) -> TrieIndex {
+//     return if (s < (*d).num_cells) as libc::c_int as libc::c_long != 0 {
+//         (*((*d).cells).offset(s as isize)).base
+//     } else {
+//         0 as libc::c_int
+//     };
+// }
+// #[no_mangle]
+// pub unsafe extern "C" fn da_get_check(d: *const DArray, s: TrieIndex) -> TrieIndex {
+//     return if (s < (*d).num_cells) as libc::c_int as libc::c_long != 0 {
+//         (*((*d).cells).offset(s as isize)).check
+//     } else {
+//         0 as libc::c_int
+//     };
+// }
 #[no_mangle]
 pub unsafe extern "C" fn da_set_base(mut d: *mut DArray, mut s: TrieIndex, mut val: TrieIndex) {
     if (s < (*d).num_cells) as libc::c_int as libc::c_long != 0 {
@@ -416,9 +416,8 @@ pub unsafe extern "C" fn da_walk(
     mut s: *mut TrieIndex,
     mut c: TrieChar,
 ) -> Bool {
-    let mut next: TrieIndex = 0;
-    next = da_get_base(d, *s) + c as libc::c_int;
-    if da_get_check(d, next) == *s {
+    let mut next: TrieIndex = (*d).get_base(*s) + c as libc::c_int;
+    if (*d).get_check(next) == *s {
         *s = next;
         return DA_TRUE;
     }
@@ -430,12 +429,12 @@ pub unsafe extern "C" fn da_insert_branch(
     mut s: TrieIndex,
     mut c: TrieChar,
 ) -> TrieIndex {
-    let mut base: TrieIndex = 0;
+    // let mut base: TrieIndex = 0;
     let mut next: TrieIndex = 0;
-    base = da_get_base(d, s);
+    let mut base = (*d).get_base(s);
     if base > 0 as libc::c_int {
         next = base + c as libc::c_int;
-        if da_get_check(d, next) == s {
+        if (*d).get_check(next) == s {
             return next;
         }
         if base > 0x7fffffff as libc::c_int - c as libc::c_int
@@ -469,14 +468,14 @@ pub unsafe extern "C" fn da_insert_branch(
     return next;
 }
 unsafe extern "C" fn da_check_free_cell(mut d: *mut DArray, mut s: TrieIndex) -> Bool {
-    return (da_extend_pool(d, s) as libc::c_uint != 0 && da_get_check(d, s) < 0 as libc::c_int)
+    return (da_extend_pool(d, s) as libc::c_uint != 0 && (*d).get_check(s) < 0 as libc::c_int)
         as libc::c_int as Bool;
 }
 unsafe extern "C" fn da_has_children(mut d: *const DArray, mut s: TrieIndex) -> Bool {
     let mut base: TrieIndex = 0;
     let mut c: TrieIndex = 0;
     let mut max_c: TrieIndex = 0;
-    base = da_get_base(d, s);
+    let mut base = (*d).get_base(s);
     if 0 as libc::c_int == base || base < 0 as libc::c_int {
         return DA_FALSE;
     }
@@ -487,7 +486,7 @@ unsafe extern "C" fn da_has_children(mut d: *const DArray, mut s: TrieIndex) -> 
     };
     c = 0 as libc::c_int;
     while c <= max_c {
-        if da_get_check(d, base + c) == s {
+        if (*d).get_check(base + c) == s {
             return DA_TRUE;
         }
         c += 1;
@@ -518,9 +517,9 @@ unsafe extern "C" fn da_find_free_base(mut d: *mut DArray, mut symbols: &Symbols
     let mut first_sym: TrieChar = 0;
     let mut s: TrieIndex = 0;
     first_sym = symbols.get(0 as usize);
-    s = -da_get_check(d, 1 as libc::c_int);
+    s = -(*d).get_check(1 as libc::c_int);
     while s != 1 as libc::c_int && s < first_sym as TrieIndex + 3 as libc::c_int {
-        s = -da_get_check(d, s);
+        s = -(*d).get_check(s);
     }
     if s == 1 as libc::c_int {
         s = first_sym as libc::c_int + 3 as libc::c_int;
@@ -528,7 +527,7 @@ unsafe extern "C" fn da_find_free_base(mut d: *mut DArray, mut symbols: &Symbols
             if da_extend_pool(d, s) as u64 == 0 {
                 return 0 as libc::c_int;
             }
-            if da_get_check(d, s) < 0 as libc::c_int {
+            if (*d).get_check(s) < 0 as libc::c_int {
                 break;
             }
             s += 1;
@@ -536,12 +535,12 @@ unsafe extern "C" fn da_find_free_base(mut d: *mut DArray, mut symbols: &Symbols
         }
     }
     while da_fit_symbols(d, s - first_sym as libc::c_int, symbols) as u64 == 0 {
-        if -da_get_check(d, s) == 1 as libc::c_int {
+        if -(*d).get_check(s) == 1 as libc::c_int {
             if (da_extend_pool(d, (*d).num_cells) as u64 == 0) as libc::c_int as libc::c_long != 0 {
                 return 0 as libc::c_int;
             }
         }
-        s = -da_get_check(d, s);
+        s = -(*d).get_check(s);
     }
     return s - first_sym as libc::c_int;
 }
@@ -570,7 +569,7 @@ unsafe extern "C" fn da_relocate_base(
     let mut old_base: TrieIndex = 0;
     // let mut symbols: *mut Symbols = 0 as *mut Symbols;
     // let mut i: libc::c_int = 0;
-    old_base = da_get_base(d, s);
+    old_base = (*d).get_base(s);
     let symbols = (*d).output_symbols(s);
     // i = 0 as libc::c_int;
     let mut i = 0;
@@ -580,7 +579,7 @@ unsafe extern "C" fn da_relocate_base(
         let mut old_next_base: TrieIndex = 0;
         old_next = old_base + symbols.get(i) as libc::c_int;
         new_next = new_base + symbols.get(i) as libc::c_int;
-        old_next_base = da_get_base(d, old_next);
+        old_next_base = (*d).get_base(old_next);
         da_alloc_cell(d, new_next);
         da_set_check(d, new_next, s);
         da_set_base(d, new_next, old_next_base);
@@ -593,7 +592,7 @@ unsafe extern "C" fn da_relocate_base(
             };
             c = 0 as libc::c_int;
             while c <= max_c {
-                if da_get_check(d, old_next_base + c) == old_next {
+                if (*d).get_check(old_next_base + c) == old_next {
                     da_set_check(d, old_next_base + c, new_next);
                 }
                 c += 1;
@@ -636,7 +635,7 @@ unsafe extern "C" fn da_extend_pool(d: *mut DArray, to_index: TrieIndex) -> Bool
         i += 1;
         i;
     }
-    free_tail = -da_get_base(d, 1 as libc::c_int);
+    free_tail = -(*d).get_base(1 as libc::c_int);
     da_set_check(d, free_tail, -new_begin);
     da_set_base(d, new_begin, -free_tail);
     da_set_check(d, to_index, -(1 as libc::c_int));
@@ -646,13 +645,13 @@ unsafe extern "C" fn da_extend_pool(d: *mut DArray, to_index: TrieIndex) -> Bool
 }
 #[no_mangle]
 pub unsafe extern "C" fn da_prune(mut d: *mut DArray, mut s: TrieIndex) {
-    da_prune_upto(d, da_get_root(d), s);
+    da_prune_upto(d, (*d).get_root(), s);
 }
 #[no_mangle]
 pub unsafe extern "C" fn da_prune_upto(mut d: *mut DArray, mut p: TrieIndex, mut s: TrieIndex) {
     while p != s && da_has_children(d, s) as u64 == 0 {
         let mut parent: TrieIndex = 0;
-        parent = da_get_check(d, s);
+        parent = (*d).get_check(s);
         da_free_cell(d, s);
         s = parent;
     }
@@ -660,19 +659,19 @@ pub unsafe extern "C" fn da_prune_upto(mut d: *mut DArray, mut p: TrieIndex, mut
 unsafe extern "C" fn da_alloc_cell(mut d: *mut DArray, mut cell: TrieIndex) {
     let mut prev: TrieIndex = 0;
     let mut next: TrieIndex = 0;
-    prev = -da_get_base(d, cell);
-    next = -da_get_check(d, cell);
+    prev = -(*d).get_base(cell);
+    next = -(*d).get_check(cell);
     da_set_check(d, prev, -next);
     da_set_base(d, next, -prev);
 }
 unsafe extern "C" fn da_free_cell(d: *mut DArray, cell: TrieIndex) {
     let mut i: TrieIndex = 0;
     let mut prev: TrieIndex = 0;
-    i = -da_get_check(d, 1 as libc::c_int);
+    i = -(*d).get_check(1 as libc::c_int);
     while i != 1 as libc::c_int && i < cell {
-        i = -da_get_check(d, i);
+        i = -(*d).get_check(i);
     }
-    prev = -da_get_base(d, i);
+    prev = -(*d).get_base(i);
     da_set_check(d, cell, -i);
     da_set_base(d, cell, -prev);
     da_set_check(d, prev, -cell);
@@ -688,7 +687,7 @@ pub unsafe extern "C" fn da_first_separate(
     let mut c: TrieIndex = 0;
     let mut max_c: TrieIndex = 0;
     loop {
-        base = da_get_base(d, root);
+        base = (*d).get_base(root);
         if !(base >= 0 as libc::c_int) {
             break;
         }
@@ -699,7 +698,7 @@ pub unsafe extern "C" fn da_first_separate(
         };
         c = 0 as libc::c_int;
         while c <= max_c {
-            if da_get_check(d, base + c) == root {
+            if (*d).get_check(base + c) == root {
                 break;
             }
             c += 1;
@@ -725,8 +724,8 @@ pub unsafe extern "C" fn da_next_separate(
     let mut c: TrieIndex = 0;
     let mut max_c: TrieIndex = 0;
     while sep != root {
-        parent = da_get_check(d, sep);
-        base = da_get_base(d, parent);
+        parent = (*d).get_check(sep);
+        base = (*d).get_base(parent);
         c = sep - base;
         trie_string_cut_last(keybuff);
         max_c = if (255 as libc::c_int) < (*d).num_cells - base {
@@ -739,7 +738,7 @@ pub unsafe extern "C" fn da_next_separate(
             if !(c <= max_c) {
                 break;
             }
-            if da_get_check(d, base + c) == parent {
+            if (*d).get_check(base + c) == parent {
                 trie_string_append_char(keybuff, c as TrieChar);
                 return da_first_separate(d, base + c, keybuff);
             }
