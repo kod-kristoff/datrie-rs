@@ -1,4 +1,5 @@
 use ::libc;
+use core::ffi::CStr;
 use datrie::{
     alpha_map::AlphaMap,
     trie::{Trie, TrieEnumFunc, TrieIterator, TrieState},
@@ -89,7 +90,13 @@ pub extern "C" fn trie_get_serialized_size(trie: *const Trie) -> size_t {
 }
 #[no_mangle]
 pub unsafe extern "C" fn trie_serialize(mut trie: *mut Trie, mut ptr: *mut uint8) {
-    return Trie::serialize(trie, ptr);
+    if trie.is_null() || ptr.is_null() {
+        return;
+    }
+    let trie = unsafe { &mut *trie };
+    let serialized_size = trie.get_serialized_size();
+    let buf: &mut [u8] = unsafe { std::slice::from_raw_parts_mut(ptr, serialized_size) };
+    let _ = trie.serialize_to_slice(buf); /* ignore errors */
 }
 #[no_mangle]
 pub unsafe extern "C" fn trie_fwrite(mut trie: *mut Trie, mut file: *mut FILE) -> libc::c_int {

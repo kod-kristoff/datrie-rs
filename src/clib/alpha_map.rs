@@ -23,7 +23,6 @@ pub unsafe extern "C" fn alpha_char_strlen(mut str: *const AlphaChar) -> libc::c
     p = str;
     while *p != 0 {
         p = p.offset(1);
-        p;
     }
     return p.offset_from(str) as libc::c_long as libc::c_int;
 }
@@ -34,9 +33,7 @@ pub unsafe extern "C" fn alpha_char_strcmp(
 ) -> libc::c_int {
     while *str1 != 0 && *str1 == *str2 {
         str1 = str1.offset(1);
-        str1;
         str2 = str2.offset(1);
-        str2;
     }
     if *str1 < *str2 {
         return -(1 as libc::c_int);

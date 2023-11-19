@@ -63,7 +63,7 @@ fn test_serialization() -> DatrieResult<()> {
         );
 
         msg_step("Getting serialized trie size");
-        let size = Trie::get_serialized_size(&mut test_trie);
+        let size = test_trie.get_serialized_size();
         println!("serialized trie size {}\n", size);
         msg_step("Allocating");
         let buf: Vec<u8> = Vec::with_capacity(size as usize);

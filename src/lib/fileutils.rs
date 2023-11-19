@@ -159,7 +159,7 @@ impl<T: io::Read> ReadExt for T {
 }
 impl<T: ReadExt + io::Seek> ReadSeekExt for T {}
 
-unsafe extern "C" fn serialize_int32_be(mut buff: *mut uint8, mut val: int32) {
+unsafe extern "C" fn serialize_int32_be(buff: *mut uint8, val: int32) {
     *buff.offset(0 as libc::c_int as isize) =
         (val >> 24 as libc::c_int & 0xff as libc::c_int) as uint8;
     *buff.offset(1 as libc::c_int as isize) =
@@ -169,7 +169,7 @@ unsafe extern "C" fn serialize_int32_be(mut buff: *mut uint8, mut val: int32) {
     *buff.offset(3 as libc::c_int as isize) = (val & 0xff as libc::c_int) as uint8;
 }
 #[no_mangle]
-pub unsafe extern "C" fn serialize_int32_be_incr(mut buff: *mut *mut uint8, mut val: int32) {
+pub unsafe extern "C" fn serialize_int32_be_incr(buff: *mut *mut uint8, val: int32) {
     serialize_int32_be(*buff, val);
     *buff = (*buff).offset(4 as libc::c_int as isize);
 }

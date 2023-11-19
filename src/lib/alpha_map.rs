@@ -1,4 +1,5 @@
 use ::libc;
+use byteorder::{BigEndian, ByteOrder, WriteBytesExt};
 use std::{fs, io::SeekFrom, ptr};
 
 use crate::{
@@ -288,13 +289,45 @@ impl AlphaMap {
         }
         return n;
     }
+    const SIGNATURE: u32 = 0xd9fcd9fc;
+    pub fn serialize(&self, buf: &mut dyn std::io::Write) -> DatrieResult<()> {
+        dbg!(Self::SIGNATURE as i32);
+        let mut _buf = [0; 4];
+        BigEndian::write_i32(&mut _buf, Self::SIGNATURE as i32);
+        dbg!(_buf);
+        buf.write_i32::<BigEndian>(Self::SIGNATURE as i32)?;
+        buf.write_i32::<BigEndian>(self.get_total_ranges() as i32)?;
+        let mut range = self.first_range;
+        while !range.is_null() {
+            let begin = unsafe { (*range).begin };
+            let end = unsafe { (*range).end };
+            buf.write_i32::<BigEndian>(begin as i32)?;
+            buf.write_i32::<BigEndian>(end as i32)?;
+            range = unsafe { (*range).next };
+        }
+        Ok(())
+    }
+    pub fn serialize_to_slice(&self, mut buf: &mut [u8]) -> DatrieResult<usize> {
+        buf.write_i32::<BigEndian>(Self::SIGNATURE as i32).unwrap();
+        buf.write_i32::<BigEndian>(self.get_total_ranges() as i32)?;
+        let mut written = 8;
+        let mut range = self.first_range;
+        while !range.is_null() {
+            let begin = unsafe { (*range).begin };
+            let end = unsafe { (*range).end };
+            buf.write_i32::<BigEndian>(begin as i32)?;
+            buf.write_i32::<BigEndian>(end as i32)?;
+            written += 8;
+            range = unsafe { (*range).next };
+        }
+        Ok(written)
+    }
 }
 
-pub unsafe fn alpha_map_serialize_bin(alpha_map: *const AlphaMap, mut ptr: *mut *mut uint8) {
-    let mut range: *mut AlphaRange = 0 as *mut AlphaRange;
+pub unsafe fn alpha_map_serialize_bin(alpha_map: *const AlphaMap, ptr: *mut *mut uint8) {
     serialize_int32_be_incr(ptr, 0xd9fcd9fc as libc::c_uint as int32);
     serialize_int32_be_incr(ptr, AlphaMap::get_total_ranges(&*alpha_map) as i32);
-    range = (*alpha_map).first_range;
+    let mut range = (*alpha_map).first_range;
     while !range.is_null() {
         serialize_int32_be_incr(ptr, (*range).begin as int32);
         serialize_int32_be_incr(ptr, (*range).end as int32);
@@ -424,7 +457,7 @@ unsafe fn alpha_map_add_range_only(
     }
     return 0 as libc::c_int;
 }
-unsafe fn alpha_map_recalc_work_area(mut alpha_map: *mut AlphaMap) -> libc::c_int {
+unsafe fn alpha_map_recalc_work_area(alpha_map: *mut AlphaMap) -> libc::c_int {
     let mut current_block: u64;
     let mut range: *mut AlphaRange = 0 as *mut AlphaRange;
     if !((*alpha_map).alpha_to_trie_map).is_null() {
@@ -460,7 +493,6 @@ unsafe fn alpha_map_recalc_work_area(mut alpha_map: *mut AlphaMap) -> libc::c_in
             n_trie = '\0' as i32 + 1 as libc::c_int;
         } else {
             n_trie += 1;
-            n_trie;
         }
         (*alpha_map).alpha_end = (*range).end;
         n_alpha = ((*range).end)
@@ -478,7 +510,6 @@ unsafe fn alpha_map_recalc_work_area(mut alpha_map: *mut AlphaMap) -> libc::c_in
             while i < n_alpha {
                 *((*alpha_map).alpha_to_trie_map).offset(i as isize) = 0x7fffffff as libc::c_int;
                 i += 1;
-                i;
             }
             (*alpha_map).trie_map_sz = n_trie;
             (*alpha_map).trie_to_alpha_map = malloc(
@@ -497,15 +528,12 @@ unsafe fn alpha_map_recalc_work_area(mut alpha_map: *mut AlphaMap) -> libc::c_in
                     while a <= (*range).end {
                         if '\0' as i32 == trie_char {
                             trie_char += 1;
-                            trie_char;
                         }
                         *((*alpha_map).alpha_to_trie_map)
                             .offset(a.wrapping_sub(alpha_begin) as isize) = trie_char;
                         *((*alpha_map).trie_to_alpha_map).offset(trie_char as isize) = a;
                         trie_char += 1;
-                        trie_char;
                         a = a.wrapping_add(1);
-                        a;
                     }
                     range = (*range).next;
                 }
@@ -528,17 +556,17 @@ unsafe fn alpha_map_recalc_work_area(mut alpha_map: *mut AlphaMap) -> libc::c_in
     return 0 as libc::c_int;
 }
 
-pub unsafe fn alpha_map_add_range(
-    mut alpha_map: *mut AlphaMap,
-    mut begin: AlphaChar,
-    mut end: AlphaChar,
-) -> libc::c_int {
-    let mut res: libc::c_int = alpha_map_add_range_only(alpha_map, begin, end);
-    if res != 0 as libc::c_int {
-        return res;
-    }
-    return alpha_map_recalc_work_area(alpha_map);
-}
+// pub unsafe fn alpha_map_add_range(
+//     mut alpha_map: *mut AlphaMap,
+//     mut begin: AlphaChar,
+//     mut end: AlphaChar,
+// ) -> libc::c_int {
+//     let mut res: libc::c_int = alpha_map_add_range_only(alpha_map, begin, end);
+//     if res != 0 as libc::c_int {
+//         return res;
+//     }
+//     return alpha_map_recalc_work_area(alpha_map);
+// }
 impl AlphaMap {
     pub fn add_range(
         &mut self,
@@ -551,10 +579,7 @@ impl AlphaMap {
         Ok(())
     }
 }
-pub unsafe fn alpha_map_char_to_trie(
-    mut alpha_map: *const AlphaMap,
-    mut ac: AlphaChar,
-) -> TrieIndex {
+pub unsafe fn alpha_map_char_to_trie(alpha_map: *const AlphaMap, ac: AlphaChar) -> TrieIndex {
     let mut alpha_begin: TrieIndex = 0;
     if (0 as libc::c_int as libc::c_uint == ac) as libc::c_int as libc::c_long != 0 {
         return '\0' as i32;
@@ -649,7 +674,7 @@ pub unsafe fn alpha_map_trie_to_char_str(
 mod tests {
     use crate::DatrieResult;
 
-    use super::AlphaMap;
+    use super::{alpha_map_serialize_bin, AlphaMap};
 
     #[test]
     fn get_serialized_size_works() -> DatrieResult<()> {
@@ -666,6 +691,26 @@ mod tests {
         alpha_map.add_range(0x00, 0xff)?;
         let size = alpha_map.get_total_ranges();
         assert_eq!(size, 1);
+        Ok(())
+    }
+
+    #[test]
+    fn serialize_works() -> DatrieResult<()> {
+        let mut alpha_map = AlphaMap::new();
+        alpha_map.add_range(0x00, 0xff)?;
+        let size = alpha_map.get_serialized_size();
+        let buf: Vec<u8> = Vec::with_capacity(size as usize);
+        let mut buf = std::mem::ManuallyDrop::new(buf);
+        let mut serialized_data = buf.as_mut_ptr();
+        let buf_cap = buf.capacity();
+        unsafe {
+            alpha_map_serialize_bin(&alpha_map, &mut serialized_data);
+        }
+        let serialized_data =
+            unsafe { Vec::from_raw_parts(serialized_data, size as usize, buf_cap) };
+        let mut serialized_self_data = Vec::with_capacity(size);
+        alpha_map.serialize(&mut serialized_self_data)?;
+        assert_eq!(serialized_data, serialized_self_data);
         Ok(())
     }
 }

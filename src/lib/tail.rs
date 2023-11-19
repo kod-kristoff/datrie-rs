@@ -1,6 +1,7 @@
 use std::io::{self, SeekFrom};
 
 use ::libc;
+use byteorder::{BigEndian, ByteOrder, WriteBytesExt};
 use core::mem::size_of;
 
 use crate::{
@@ -217,7 +218,7 @@ impl Tail {
     }
 }
 #[no_mangle]
-pub unsafe extern "C" fn tail_fread(mut file: *mut FILE) -> *mut Tail {
+pub unsafe extern "C" fn tail_fread(file: *mut FILE) -> *mut Tail {
     let mut current_block: u64;
     let mut save_pos: libc::c_long = 0;
     let mut t: *mut Tail = 0 as *mut Tail;
@@ -368,7 +369,6 @@ pub unsafe extern "C" fn tail_fwrite(mut t: *const Tail, mut file: *mut FILE) ->
             return -(1 as libc::c_int);
         }
         i += 1;
-        i;
     }
     return 0 as libc::c_int;
 }
@@ -391,6 +391,55 @@ impl Tail {
         }
         // dbg!(&dynamic_count);
         return static_count + dynamic_count;
+    }
+
+    const SIGNATURE: u32 = 0xdffcdffc;
+    pub fn serialize(&self, writer: &mut dyn std::io::Write) -> DatrieResult<()> {
+        writer.write_i32::<BigEndian>(Self::SIGNATURE as i32)?;
+        writer.write_i32::<BigEndian>(self.first_free)?;
+        writer.write_i32::<BigEndian>(self.num_tails)?;
+        for i in 0..self.num_tails {
+            let next_free = unsafe { (*self.tails.offset(i as isize)).next_free };
+            let data = unsafe { (*self.tails.offset(i as isize)).data };
+            writer.write_i32::<BigEndian>(next_free)?;
+            writer.write_i32::<BigEndian>(data)?;
+            let suffix = unsafe { (*self.tails.offset(i as isize)).suffix };
+            let length = if suffix.is_null() {
+                0
+            } else {
+                trie_char_strsize(suffix)
+            };
+            writer.write_i16::<BigEndian>(length as i16)?;
+            let suffix_slice = unsafe { std::slice::from_raw_parts(suffix, length as usize) };
+            writer.write_all(suffix_slice)?;
+        }
+        Ok(())
+    }
+    pub fn serialize_to_slice(&self, mut buf: &mut [u8]) -> DatrieResult<usize> {
+        buf.write_i32::<BigEndian>(Self::SIGNATURE as i32)?;
+        buf.write_i32::<BigEndian>(self.first_free)?;
+        buf.write_i32::<BigEndian>(self.num_tails)?;
+        let mut written: usize = 12;
+        for i in 0..self.num_tails {
+            let next_free = unsafe { (*self.tails.offset(i as isize)).next_free };
+            let data = unsafe { (*self.tails.offset(i as isize)).data };
+            buf.write_i32::<BigEndian>(next_free)?;
+            buf.write_i32::<BigEndian>(data)?;
+            let suffix = unsafe { (*self.tails.offset(i as isize)).suffix };
+            let length = if suffix.is_null() {
+                0
+            } else {
+                trie_char_strsize(suffix)
+            };
+            buf.write_i16::<BigEndian>(length as i16)?;
+            written += 10;
+            let suffix_slice = unsafe { std::slice::from_raw_parts(suffix, length as usize) };
+            for byte in suffix_slice {
+                buf.write_u8(*byte)?;
+            }
+            written += length as usize;
+        }
+        Ok(written)
     }
 }
 
@@ -421,15 +470,11 @@ pub unsafe extern "C" fn tail_serialize(t: *const Tail, ptr: *mut *mut uint8) ->
             *ptr = (*ptr).offset(length as libc::c_int as isize);
         }
         i += 1;
-        i;
     }
     return 0 as libc::c_int;
 }
 #[no_mangle]
-pub unsafe extern "C" fn tail_get_suffix(
-    mut t: *const Tail,
-    mut index: TrieIndex,
-) -> *const TrieChar {
+pub unsafe extern "C" fn tail_get_suffix(t: *const Tail, mut index: TrieIndex) -> *const TrieChar {
     index -= 1 as libc::c_int;
     return if (index < (*t).num_tails) as libc::c_int as libc::c_long != 0 {
         (*((*t).tails).offset(index as isize)).suffix
@@ -439,9 +484,9 @@ pub unsafe extern "C" fn tail_get_suffix(
 }
 #[no_mangle]
 pub unsafe extern "C" fn tail_set_suffix(
-    mut t: *mut Tail,
+    t: *mut Tail,
     mut index: TrieIndex,
-    mut suffix: *const TrieChar,
+    suffix: *const TrieChar,
 ) -> Bool {
     index -= 1 as libc::c_int;
     if (index < (*t).num_tails) as libc::c_int as libc::c_long != 0 {

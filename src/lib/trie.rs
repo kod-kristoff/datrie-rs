@@ -144,14 +144,12 @@ impl Drop for Trie {
     }
 }
 impl Trie {
-    pub unsafe fn save(mut trie: *mut Trie, mut path: *const libc::c_char) -> libc::c_int {
-        let mut file: *mut FILE = 0 as *mut FILE;
-        let mut res: libc::c_int = 0 as libc::c_int;
-        file = fopen(path, b"wb+\0" as *const u8 as *const libc::c_char);
+    pub unsafe fn save(trie: *mut Trie, path: *const libc::c_char) -> libc::c_int {
+        let file: *mut FILE = fopen(path, b"wb+\0" as *const u8 as *const libc::c_char);
         if file.is_null() {
             return -(1 as libc::c_int);
         }
-        res = Trie::fwrite(trie, file);
+        let res = Trie::fwrite(trie, file);
         fclose(file);
         return res;
     }
@@ -181,18 +179,21 @@ impl Trie {
         tail_serialize((*trie).tail, &mut ptr1);
         (*trie).is_dirty = DA_FALSE;
     }
-    pub fn serialize_safe(&mut self, write: &mut dyn std::io::Write) -> DatrieResult<()> {
-        let size = self.get_serialized_size();
-        let buf: Vec<u8> = Vec::with_capacity(size);
-        let mut buf = std::mem::ManuallyDrop::new(buf);
-        let buf_cap = buf.capacity();
-        let buf_ptr = buf.as_mut_ptr();
-        unsafe {
-            Self::serialize(self as *mut Trie, buf_ptr);
-        }
-        let buf = unsafe { Vec::from_raw_parts(buf_ptr, size, buf_cap) };
-        write.write_all(&buf)?;
+    pub fn serialize_safe(&mut self, mut writer: impl std::io::Write) -> DatrieResult<()> {
+        let self_da = unsafe { &*self.da };
+        let self_tail = unsafe { &*self.tail };
+        self.alpha_map.serialize(&mut writer)?;
+        self_da.serialize(&mut writer)?;
+        self_tail.serialize(&mut writer)?;
         Ok(())
+    }
+    pub fn serialize_to_slice(&mut self, buf: &mut [u8]) -> DatrieResult<usize> {
+        let self_da = unsafe { &*self.da };
+        let self_tail = unsafe { &*self.tail };
+        let mut start = self.alpha_map.serialize_to_slice(buf)?;
+        start += self_da.serialize_to_slice(&mut buf[start..])?;
+        start += self_tail.serialize_to_slice(&mut buf[start..])?;
+        Ok(start)
     }
     pub unsafe fn fwrite(trie: *mut Trie, file: *mut FILE) -> libc::c_int {
         if alpha_map_fwrite_bin((*trie).alpha_map.as_ref(), file) != 0 as libc::c_int {
@@ -738,7 +739,6 @@ impl TrieIterator {
                 alpha_p = alpha_p.offset(1);
                 *fresh1 = alpha_map_trie_to_char((*(*s).trie).alpha_map.as_ref(), *fresh0);
                 i -= 1;
-                i;
             }
         }
         while '\0' as i32 != *tail_str as libc::c_int {
@@ -771,6 +771,7 @@ impl TrieIterator {
 }
 #[cfg(test)]
 mod tests {
+    use crate::trie::AlphaChar;
     use crate::{trie::Trie, DatrieResult};
 
     use crate::alpha_map::AlphaMap;
@@ -782,6 +783,32 @@ mod tests {
         let trie = Trie::new(&alpha_map)?;
         let size = trie.get_serialized_size();
         assert_eq!(size, 52);
+        Ok(())
+    }
+    #[test]
+    fn serialize_to_slice_works() -> DatrieResult<()> {
+        let mut alpha_map = AlphaMap::new();
+        alpha_map.add_range(0x00, 0xff)?;
+        let mut trie = Trie::new(&alpha_map)?;
+        unsafe {
+            Trie::store(&mut trie, ['a' as AlphaChar, 0x0000].as_ptr(), 2);
+        }
+        let size = trie.get_serialized_size();
+        let mut serialized_data = Vec::with_capacity(size);
+        trie.serialize_safe(&mut serialized_data)?;
+        let mut serialized_to_slice = vec![0; size];
+        let serialized_size = trie
+            .serialize_to_slice(serialized_to_slice.as_mut_slice())
+            .unwrap();
+        assert_eq!(serialized_size, size);
+        for (i, (l, r)) in serialized_data
+            .iter()
+            .zip(serialized_to_slice.iter())
+            .enumerate()
+        {
+            assert_eq!(l, r, "imdex {} fsilrd", i);
+        }
+        assert_eq!(serialized_data, serialized_to_slice);
         Ok(())
     }
 }

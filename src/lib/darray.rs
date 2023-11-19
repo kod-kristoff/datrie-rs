@@ -1,6 +1,7 @@
 use std::io::{self, SeekFrom};
 
 use ::libc;
+use byteorder::{BigEndian, ByteOrder, WriteBytesExt};
 
 use crate::{
     fileutils::ReadExt,
@@ -348,6 +349,26 @@ impl DArray {
         } else {
             return 0;
         }
+    }
+    pub fn serialize(&self, writer: &mut dyn std::io::Write) -> DatrieResult<()> {
+        for i in 0..self.num_cells {
+            let base = unsafe { (*self.cells.offset(i as isize)).base };
+            let check = unsafe { (*self.cells.offset(i as isize)).check };
+            writer.write_i32::<BigEndian>(base)?;
+            writer.write_i32::<BigEndian>(check)?;
+        }
+        Ok(())
+    }
+    pub fn serialize_to_slice(&self, mut buf: &mut [u8]) -> DatrieResult<usize> {
+        let mut written = 0;
+        for i in 0..self.num_cells {
+            let base = unsafe { (*self.cells.offset(i as isize)).base };
+            let check = unsafe { (*self.cells.offset(i as isize)).check };
+            buf.write_i32::<BigEndian>(base)?;
+            buf.write_i32::<BigEndian>(check)?;
+            written += 8;
+        }
+        Ok(written)
     }
 }
 #[no_mangle]
