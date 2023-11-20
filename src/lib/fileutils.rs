@@ -79,16 +79,21 @@ pub type int8 = libc::c_schar;
 pub type int16 = libc::c_short;
 pub type int32 = libc::c_int;
 
-pub struct FileDescriptor {
+pub struct CFile {
     file: *mut FILE,
 }
 
+impl CFile {
+    pub fn new(file: *mut FILE) -> CFile {
+        CFile { file }
+    }
+}
 // impl io::Seek for FileDescriptor {
 //     fn seek(&mut self, pos: io::SeekFrom) -> io::Result<u64> {
 
 //     }
 // }
-impl io::Read for FileDescriptor {
+impl io::Read for CFile {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         let len = unsafe {
             fread(
