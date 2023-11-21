@@ -45,8 +45,9 @@ pub struct Symbols {
 pub struct DArray {
     pub num_cells: TrieIndex,
     pub cells: *mut DACell,
+    pub cells2: Vec<DACell>,
 }
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 #[repr(C)]
 pub struct DACell {
     pub base: TrieIndex,
@@ -88,38 +89,6 @@ impl Symbols {
         self.num_symbols += 1;
     }
 }
-// unsafe fn symbols_add(syms: *mut Symbols, c: TrieChar) {
-//     let mut lower: libc::c_short = 0;
-//     let mut upper: libc::c_short = 0;
-//     lower = 0 as libc::c_int as libc::c_short;
-//     upper = (*syms).num_symbols;
-//     while (lower as libc::c_int) < upper as libc::c_int {
-//         let mut middle: libc::c_short = 0;
-//         middle =
-//             ((lower as libc::c_int + upper as libc::c_int) / 2 as libc::c_int) as libc::c_short;
-//         if c as libc::c_int > (*syms).symbols[middle as usize] as libc::c_int {
-//             lower = (middle as libc::c_int + 1 as libc::c_int) as libc::c_short;
-//         } else if (c as libc::c_int) < (*syms).symbols[middle as usize] as libc::c_int {
-//             upper = middle;
-//         } else {
-//             return;
-//         }
-//     }
-//     if (lower as libc::c_int) < (*syms).num_symbols as libc::c_int {
-//         memmove(
-//             ((*syms).symbols)
-//                 .as_mut_ptr()
-//                 .offset(lower as libc::c_int as isize)
-//                 .offset(1 as libc::c_int as isize) as *mut libc::c_void,
-//             ((*syms).symbols)
-//                 .as_mut_ptr()
-//                 .offset(lower as libc::c_int as isize) as *const libc::c_void,
-//             ((*syms).num_symbols as libc::c_int - lower as libc::c_int) as libc::c_ulong,
-//         );
-//     }
-//     (*syms).symbols[lower as usize] = c;
-//     (*syms).num_symbols += 1;
-// }
 impl Symbols {
     pub fn num(&self) -> usize {
         self.num_symbols as usize
@@ -133,6 +102,17 @@ impl DArray {
 
     pub fn new() -> DatrieResult<DArray> {
         let num_cells = 3;
+        let cells2 = vec![
+            DACell {
+                base: Self::SIGNATURE as TrieIndex,
+                check: num_cells,
+            },
+            DACell {
+                base: -1,
+                check: -1,
+            },
+            DACell { base: 3, check: 0 },
+        ];
         let cells = unsafe {
             malloc(
                 (num_cells as libc::c_ulong)
@@ -155,7 +135,11 @@ impl DArray {
             (*cells.offset(2 as libc::c_int as isize)).base = 3 as libc::c_int;
             (*cells.offset(2 as libc::c_int as isize)).check = 0 as libc::c_int;
         }
-        Ok(DArray { num_cells, cells })
+        Ok(DArray {
+            num_cells,
+            cells,
+            cells2,
+        })
     }
 }
 impl Drop for DArray {
@@ -165,31 +149,6 @@ impl Drop for DArray {
         }
     }
 }
-// #[no_mangle]
-// pub unsafe extern "C" fn da_new() -> *mut DArray {
-//     let d: *mut DArray = malloc(::core::mem::size_of::<DArray>() as libc::c_ulong) as *mut DArray;
-//     if d.is_null() as libc::c_int as libc::c_long != 0 {
-//         return 0 as *mut DArray;
-//     }
-//     (*d).num_cells = 3 as libc::c_int;
-//     (*d).cells = malloc(
-//         ((*d).num_cells as libc::c_ulong)
-//             .wrapping_mul(::core::mem::size_of::<DACell>() as libc::c_ulong),
-//     ) as *mut DACell;
-//     if ((*d).cells).is_null() as libc::c_int as libc::c_long != 0 {
-//         free(d as *mut libc::c_void);
-//         return 0 as *mut DArray;
-//     } else {
-//         (*((*d).cells).offset(0 as libc::c_int as isize)).base =
-//             0xdafcdafc as libc::c_uint as TrieIndex;
-//         (*((*d).cells).offset(0 as libc::c_int as isize)).check = (*d).num_cells;
-//         (*((*d).cells).offset(1 as libc::c_int as isize)).base = -(1 as libc::c_int);
-//         (*((*d).cells).offset(1 as libc::c_int as isize)).check = -(1 as libc::c_int);
-//         (*((*d).cells).offset(2 as libc::c_int as isize)).base = 3 as libc::c_int;
-//         (*((*d).cells).offset(2 as libc::c_int as isize)).check = 0 as libc::c_int;
-//         return d;
-//     };
-// }
 impl DArray {
     pub fn fread_safe<R: ReadExt + io::Seek>(reader: &mut R) -> DatrieResult<DArray> {
         let save_pos = reader.seek(SeekFrom::Current(0))?;
@@ -232,6 +191,7 @@ impl DArray {
             ));
         }
         // unsafe {
+        let mut cells2 = Vec::with_capacity(num_cells as usize);
         let cells = unsafe {
             malloc(
                 (num_cells as libc::c_ulong)
@@ -245,28 +205,37 @@ impl DArray {
                     0xdafcdafc as libc::c_uint as TrieIndex;
                 (*cells.offset(0 as libc::c_int as isize)).check = num_cells;
             }
-            let mut n = 1 as libc::c_int;
+            cells2.push(DACell {
+                base: Self::SIGNATURE as TrieIndex,
+                check: num_cells,
+            });
+            let mut n = 1isize;
             loop {
-                if !(n < num_cells) {
+                if !(n < num_cells as isize) {
                     current_block = 11050875288958768710;
                     break;
                 }
-                unsafe {
-                    if reader
-                        .read_int32(&mut (*cells.offset(n as isize)).base)
-                        .is_err()
-                        || reader
-                            .read_int32(&mut (*cells.offset(n as isize)).check)
-                            .is_err()
-                    {
-                        current_block = 9985172916848320936;
-                        break;
-                    }
+                let mut base = 0;
+                let mut check = 0;
+                if reader.read_int32(&mut base).is_err() || reader.read_int32(&mut check).is_err() {
+                    current_block = 9985172916848320936;
+                    break;
                 }
+                unsafe {
+                    (*cells.offset(n)).base = base;
+                    (*cells.offset(n)).check = check;
+                }
+                cells2.push(DACell { base, check });
                 n += 1;
             }
             match current_block {
-                11050875288958768710 => return Ok(DArray { num_cells, cells }),
+                11050875288958768710 => {
+                    return Ok(DArray {
+                        num_cells,
+                        cells,
+                        cells2,
+                    })
+                }
                 _ => unsafe {
                     free(cells as *mut libc::c_void);
                 },
@@ -286,10 +255,10 @@ impl DArray {
     }
 
     pub unsafe fn fread(file: *mut FILE) -> DatrieResult<DArray> {
-        let mut current_block: u64;
+        // let mut current_block: u64;
         // let mut save_pos: libc::c_long = 0;
-        let mut d: *mut DArray = 0 as *mut DArray;
-        let mut n: TrieIndex = 0;
+        // let mut d: *mut DArray = 0 as *mut DArray;
+        // let mut n: TrieIndex = 0;
         let save_pos = ftell(file);
         let mut cfile = CFile::new(file);
         match Self::do_fread(&mut cfile) {
@@ -305,7 +274,7 @@ impl DArray {
     fn do_fread<R: ReadExt>(reader: &mut R) -> DatrieResult<DArray> {
         let mut current_block: u64;
         let mut save_pos: libc::c_long = 0;
-        let mut d: *mut DArray = 0 as *mut DArray;
+        // let mut d: *mut DArray = 0 as *mut DArray;
         let mut n = 0;
         reader.read_uint32(&mut n)?;
         if Self::SIGNATURE != n {
@@ -339,6 +308,7 @@ impl DArray {
             malloc((num_cells as libc::c_ulong).wrapping_mul(size_of::<DACell>() as libc::c_ulong))
                 as *mut DACell
         };
+        let mut cells2 = Vec::with_capacity(num_cells as usize);
         // }
         if cells.is_null() {
             return Err(DatrieError::new(
@@ -348,36 +318,55 @@ impl DArray {
         }
         unsafe {
             (*cells.offset(0)).base = Self::SIGNATURE as i32;
-        }
-        unsafe {
             (*cells.offset(0)).check = num_cells;
         }
+        cells2.push(DACell {
+            base: Self::SIGNATURE as TrieIndex,
+            check: num_cells,
+        });
         // if !(((*d)cells).is_null() as libc::c_int as libc::c_long != 0) {
         //     (*((*d).cells).offset(0 as libc::c_int as isize)).base =
         //         0xdafcdafc as libc::c_uint as TrieIndex;
         //     (*((*d).cells).offset(0 as libc::c_int as isize)).check = (*d).num_cells;
-        let mut n = 1;
+        let mut n: isize = 1;
         loop {
-            if !(n < num_cells) {
+            if !(n < num_cells as isize) {
                 current_block = 11050875288958768710;
                 break;
             }
-            unsafe {
-                if reader
-                    .read_int32(&mut (*cells.offset(n as isize)).base)
-                    .is_err()
-                    || reader
-                        .read_int32(&mut (*cells.offset(n as isize)).check)
-                        .is_err()
-                {
-                    current_block = 9985172916848320936;
-                    break;
-                }
+            let mut base = 0;
+            let mut check = 0;
+            if reader.read_int32(&mut base).is_err() || reader.read_int32(&mut check).is_err() {
+                current_block = 9985172916848320936;
+                break;
             }
+            unsafe {
+                (*cells.offset(n)).base = base;
+                (*cells.offset(n)).check = check;
+            }
+            cells2.push(DACell { base, check });
+            // unsafe {
+            //     if reader
+            //         .read_int32(&mut (*cells.offset(n as isize)).base)
+            //         .is_err()
+            //         || reader
+            //             .read_int32(&mut (*cells.offset(n as isize)).check)
+            //             .is_err()
+            //     {
+            //         current_block = 9985172916848320936;
+            //         break;
+            //     }
+            // }
             n += 1;
         }
         match current_block {
-            11050875288958768710 => return Ok(DArray { num_cells, cells }),
+            11050875288958768710 => {
+                return Ok(DArray {
+                    num_cells,
+                    cells,
+                    cells2,
+                })
+            }
             _ => unsafe {
                 free(cells as *mut libc::c_void);
             },
@@ -396,136 +385,14 @@ impl DArray {
         ));
     }
 
-    // unsafe fn do_fread(file: *mut FILE) -> DatrieResult<DArray> {
-    //     let mut current_block: u64;
-    //     // let mut save_pos: libc::c_long = 0;
-    //     let mut d: *mut DArray = 0 as *mut DArray;
-    //     let mut n: TrieIndex = 0;
-    //     let save_pos = ftell(file);
-    //     if !(file_read_int32(file, &mut n) as u64 == 0 || 0xdafcdafc as libc::c_uint != n as uint32)
-    //     {
-    //         d = malloc(::core::mem::size_of::<DArray>() as libc::c_ulong) as *mut DArray;
-    //         if !(d.is_null() as libc::c_int as libc::c_long != 0) {
-    //             if !(file_read_int32(file, &mut (*d).num_cells) as u64 == 0) {
-    //                 if !((*d).num_cells as libc::c_ulong
-    //                     > (18446744073709551615 as libc::c_ulong)
-    //                         .wrapping_div(::core::mem::size_of::<DACell>() as libc::c_ulong))
-    //                 {
-    //                     (*d).cells = malloc(
-    //                         ((*d).num_cells as libc::c_ulong).wrapping_mul(::core::mem::size_of::<
-    //                             DACell,
-    //                         >(
-    //                         )
-    //                             as libc::c_ulong),
-    //                     ) as *mut DACell;
-    //                     if !(((*d).cells).is_null() as libc::c_int as libc::c_long != 0) {
-    //                         (*((*d).cells).offset(0 as libc::c_int as isize)).base =
-    //                             0xdafcdafc as libc::c_uint as TrieIndex;
-    //                         (*((*d).cells).offset(0 as libc::c_int as isize)).check =
-    //                             (*d).num_cells;
-    //                         n = 1 as libc::c_int;
-    //                         loop {
-    //                             if !(n < (*d).num_cells) {
-    //                                 current_block = 11050875288958768710;
-    //                                 break;
-    //                             }
-    //                             if file_read_int32(
-    //                                 file,
-    //                                 &mut (*((*d).cells).offset(n as isize)).base,
-    //                             ) as u64
-    //                                 == 0
-    //                                 || file_read_int32(
-    //                                     file,
-    //                                     &mut (*((*d).cells).offset(n as isize)).check,
-    //                                 ) as u64
-    //                                     == 0
-    //                             {
-    //                                 current_block = 9985172916848320936;
-    //                                 break;
-    //                             }
-    //                             n += 1;
-    //                         }
-    //                         match current_block {
-    //                             11050875288958768710 => return d,
-    //                             _ => {
-    //                                 free((*d).cells as *mut libc::c_void);
-    //                             }
-    //                         }
-    //                     }
-    //                 }
-    //             }
-    //             free(d as *mut libc::c_void);
-    //         }
+    // pub unsafe fn fwrite(&self, file: *mut FILE) -> DatrieResult<()> {
+    //     for i in 0..self.num_cells() {
+
     //     }
-    //     fseek(file, save_pos, 0 as libc::c_int);
-    //     return 0 as *mut DArray;
     // }
 }
-#[no_mangle]
-pub unsafe extern "C" fn da_fread(file: *mut FILE) -> *mut DArray {
-    let mut current_block: u64;
-    let mut save_pos: libc::c_long = 0;
-    let mut d: *mut DArray = 0 as *mut DArray;
-    let mut n: TrieIndex = 0;
-    save_pos = ftell(file);
-    if !(file_read_int32(file, &mut n) as u64 == 0 || 0xdafcdafc as libc::c_uint != n as uint32) {
-        d = malloc(::core::mem::size_of::<DArray>() as libc::c_ulong) as *mut DArray;
-        if !(d.is_null() as libc::c_int as libc::c_long != 0) {
-            if !(file_read_int32(file, &mut (*d).num_cells) as u64 == 0) {
-                if !((*d).num_cells as libc::c_ulong
-                    > (18446744073709551615 as libc::c_ulong)
-                        .wrapping_div(::core::mem::size_of::<DACell>() as libc::c_ulong))
-                {
-                    (*d).cells = malloc(
-                        ((*d).num_cells as libc::c_ulong)
-                            .wrapping_mul(::core::mem::size_of::<DACell>() as libc::c_ulong),
-                    ) as *mut DACell;
-                    if !(((*d).cells).is_null() as libc::c_int as libc::c_long != 0) {
-                        (*((*d).cells).offset(0 as libc::c_int as isize)).base =
-                            0xdafcdafc as libc::c_uint as TrieIndex;
-                        (*((*d).cells).offset(0 as libc::c_int as isize)).check = (*d).num_cells;
-                        n = 1 as libc::c_int;
-                        loop {
-                            if !(n < (*d).num_cells) {
-                                current_block = 11050875288958768710;
-                                break;
-                            }
-                            if file_read_int32(file, &mut (*((*d).cells).offset(n as isize)).base)
-                                as u64
-                                == 0
-                                || file_read_int32(
-                                    file,
-                                    &mut (*((*d).cells).offset(n as isize)).check,
-                                ) as u64
-                                    == 0
-                            {
-                                current_block = 9985172916848320936;
-                                break;
-                            }
-                            n += 1;
-                        }
-                        match current_block {
-                            11050875288958768710 => return d,
-                            _ => {
-                                free((*d).cells as *mut libc::c_void);
-                            }
-                        }
-                    }
-                }
-            }
-            free(d as *mut libc::c_void);
-        }
-    }
-    fseek(file, save_pos, 0 as libc::c_int);
-    return 0 as *mut DArray;
-}
-// #[no_mangle]
-// pub unsafe extern "C" fn da_free(d: *mut DArray) {
-//     free((*d).cells as *mut libc::c_void);
-//     free(d as *mut libc::c_void);
-// }
-#[no_mangle]
-pub unsafe extern "C" fn da_fwrite(d: *const DArray, file: *mut FILE) -> libc::c_int {
+
+pub unsafe fn da_fwrite(d: *const DArray, file: *mut FILE) -> libc::c_int {
     let mut i: TrieIndex = 0;
     while i < (*d).num_cells {
         if file_write_int32(file, (*((*d).cells).offset(i as isize)).base) as u64 == 0
@@ -566,8 +433,8 @@ impl DArray {
         Ok(written)
     }
 }
-#[no_mangle]
-pub unsafe extern "C" fn da_serialize(d: *const DArray, ptr: *mut *mut uint8) {
+//
+pub unsafe fn da_serialize(d: *const DArray, ptr: *mut *mut uint8) {
     let mut i: TrieIndex = 0;
     while i < (*d).num_cells {
         serialize_int32_be_incr(ptr, (*((*d).cells).offset(i as isize)).base);
@@ -580,134 +447,201 @@ impl DArray {
         return 2 as libc::c_int;
     }
     pub fn get_base(&self, s: TrieIndex) -> TrieIndex {
-        return if s < self.num_cells {
-            unsafe { (*((self).cells).offset(s as isize)).base }
+        return if s < self.num_cells() as TrieIndex {
+            let base = unsafe { (*((self).cells).offset(s as isize)).base };
+            assert_eq!(base, self.cells2[s as usize].base);
+            base
         } else {
             0 as libc::c_int
         };
     }
     pub fn get_check(&self, s: TrieIndex) -> TrieIndex {
-        return if s < self.num_cells {
-            unsafe { (*(self.cells).offset(s as isize)).check }
+        return if s < self.num_cells() as TrieIndex {
+            let check = unsafe { (*(self.cells).offset(s as isize)).check };
+            assert_eq!(check, self.cells2[s as usize].check);
+            check
         } else {
             0 as libc::c_int
         };
     }
-}
-// #[no_mangle]
-// pub unsafe extern "C" fn da_get_root(_d: *const DArray) -> TrieIndex {
-//     return 2 as libc::c_int;
-// }
-// #[no_mangle]
-// pub unsafe extern "C" fn da_get_base(d: *const DArray, s: TrieIndex) -> TrieIndex {
-//     return if (s < (*d).num_cells) as libc::c_int as libc::c_long != 0 {
-//         (*((*d).cells).offset(s as isize)).base
-//     } else {
-//         0 as libc::c_int
-//     };
-// }
-// #[no_mangle]
-// pub unsafe extern "C" fn da_get_check(d: *const DArray, s: TrieIndex) -> TrieIndex {
-//     return if (s < (*d).num_cells) as libc::c_int as libc::c_long != 0 {
-//         (*((*d).cells).offset(s as isize)).check
-//     } else {
-//         0 as libc::c_int
-//     };
-// }
-#[no_mangle]
-pub unsafe extern "C" fn da_set_base(mut d: *mut DArray, mut s: TrieIndex, mut val: TrieIndex) {
-    if (s < (*d).num_cells) as libc::c_int as libc::c_long != 0 {
-        (*((*d).cells).offset(s as isize)).base = val;
+    pub fn num_cells(&self) -> usize {
+        assert_eq!(self.num_cells as usize, self.cells2.len());
+        self.cells2.len()
     }
-}
-#[no_mangle]
-pub unsafe extern "C" fn da_set_check(mut d: *mut DArray, mut s: TrieIndex, mut val: TrieIndex) {
-    if (s < (*d).num_cells) as libc::c_int as libc::c_long != 0 {
-        (*((*d).cells).offset(s as isize)).check = val;
-    }
-}
-#[no_mangle]
-pub unsafe extern "C" fn da_walk(
-    mut d: *const DArray,
-    mut s: *mut TrieIndex,
-    mut c: TrieChar,
-) -> Bool {
-    let mut next: TrieIndex = (*d).get_base(*s) + c as libc::c_int;
-    if (*d).get_check(next) == *s {
-        *s = next;
-        return DA_TRUE;
-    }
-    return DA_FALSE;
-}
-#[no_mangle]
-pub unsafe extern "C" fn da_insert_branch(
-    mut d: *mut DArray,
-    mut s: TrieIndex,
-    mut c: TrieChar,
-) -> TrieIndex {
-    // let mut base: TrieIndex = 0;
-    let mut next: TrieIndex = 0;
-    let mut base = (*d).get_base(s);
-    if base > 0 as libc::c_int {
-        next = base + c as libc::c_int;
-        if (*d).get_check(next) == s {
-            return next;
-        }
-        if base > 0x7fffffff as libc::c_int - c as libc::c_int
-            || da_check_free_cell(d, next) as u64 == 0
-        {
-            // let mut symbols: *mut Symbols = 0 as *mut Symbols;
-            let mut new_base: TrieIndex = 0;
-            let mut symbols = (*d).output_symbols(s);
-            symbols.add(c);
-            new_base = da_find_free_base(d, &symbols);
-            if (0 as libc::c_int == new_base) as libc::c_int as libc::c_long != 0 {
-                return 0 as libc::c_int;
+    pub fn set_base(&mut self, s: TrieIndex, val: TrieIndex) {
+        if (s < self.num_cells) as libc::c_int as libc::c_long != 0 {
+            unsafe {
+                (*self.cells.offset(s as isize)).base = val;
             }
-            da_relocate_base(d, s, new_base);
-            next = new_base + c as libc::c_int;
         }
-    } else {
-        // let mut symbols_0: *mut Symbols = 0 as *mut Symbols;
-        let mut new_base_0: TrieIndex = 0;
-        let mut symbols_0 = Symbols::new();
-        symbols_0.add(c);
-        new_base_0 = da_find_free_base(d, &symbols_0);
-        if (0 as libc::c_int == new_base_0) as libc::c_int as libc::c_long != 0 {
-            return 0 as libc::c_int;
+        let s = s as usize;
+        if s < self.num_cells() {
+            self.cells2[s].base = val;
         }
-        da_set_base(d, s, new_base_0);
-        next = new_base_0 + c as libc::c_int;
     }
-    da_alloc_cell(d, next);
-    da_set_check(d, next, s);
-    return next;
-}
-unsafe extern "C" fn da_check_free_cell(mut d: *mut DArray, mut s: TrieIndex) -> Bool {
-    return (da_extend_pool(d, s) as libc::c_uint != 0 && (*d).get_check(s) < 0 as libc::c_int)
-        as libc::c_int as Bool;
-}
-unsafe extern "C" fn da_has_children(mut d: *const DArray, mut s: TrieIndex) -> Bool {
-    let mut base: TrieIndex = 0;
-    let mut c: TrieIndex = 0;
-    let mut max_c: TrieIndex = 0;
-    let mut base = (*d).get_base(s);
-    if 0 as libc::c_int == base || base < 0 as libc::c_int {
-        return DA_FALSE;
+    pub fn set_check(&mut self, s: TrieIndex, val: TrieIndex) {
+        if (s < self.num_cells) as libc::c_int as libc::c_long != 0 {
+            unsafe {
+                (*self.cells.offset(s as isize)).check = val;
+            }
+        }
+        let s = s as usize;
+        if s < self.num_cells() {
+            self.cells2[s].check = val;
+        }
     }
-    max_c = if (255 as libc::c_int) < (*d).num_cells - base {
-        255 as libc::c_int
-    } else {
-        (*d).num_cells - base
-    };
-    c = 0 as libc::c_int;
-    while c <= max_c {
-        if (*d).get_check(base + c) == s {
+    pub fn walk(
+        &self,
+        // mut d: *const DArray,
+        s: *mut TrieIndex,
+        c: TrieChar,
+    ) -> Bool {
+        let next: TrieIndex = unsafe { self.get_base(*s) } + c as libc::c_int;
+        if unsafe { self.get_check(next) == *s } {
+            unsafe {
+                *s = next;
+            }
             return DA_TRUE;
         }
-        c += 1;
+        return DA_FALSE;
     }
-    return DA_FALSE;
+    pub unsafe fn insert_branch(
+        &mut self,
+        // mut d: *mut DArray,
+        s: TrieIndex,
+        c: TrieChar,
+    ) -> TrieIndex {
+        // let mut base: TrieIndex = 0;
+        let mut next: TrieIndex = 0;
+        let mut base = self.get_base(s);
+        if base > 0 as libc::c_int {
+            next = base + c as libc::c_int;
+            if self.get_check(next) == s {
+                return next;
+            }
+            if base > 0x7fffffff as libc::c_int - c as libc::c_int
+                || self.check_free_cell(next) as u64 == 0
+            {
+                // let mut symbols: *mut Symbols = 0 as *mut Symbols;
+                let mut new_base: TrieIndex = 0;
+                let mut symbols = self.output_symbols(s);
+                symbols.add(c);
+                new_base = self.find_free_base(&symbols);
+                if (0 as libc::c_int == new_base) as libc::c_int as libc::c_long != 0 {
+                    return 0 as libc::c_int;
+                }
+                self.relocate_base(s, new_base);
+                next = new_base + c as libc::c_int;
+            }
+        } else {
+            // let mut symbols_0: *mut Symbols = 0 as *mut Symbols;
+            let mut new_base_0: TrieIndex = 0;
+            let mut symbols_0 = Symbols::new();
+            symbols_0.add(c);
+            new_base_0 = self.find_free_base(&symbols_0);
+            if (0 as libc::c_int == new_base_0) as libc::c_int as libc::c_long != 0 {
+                return 0 as libc::c_int;
+            }
+            self.set_base(s, new_base_0);
+            next = new_base_0 + c as libc::c_int;
+        }
+        self.alloc_cell(next);
+        self.set_check(next, s);
+        return next;
+    }
+}
+
+// pub unsafe fn set_base(mut d: *mut DArray, mut s: TrieIndex, mut val: TrieIndex) {
+//     if (s < (*d).num_cells) as libc::c_int as libc::c_long != 0 {
+//         (*((*d).cells).offset(s as isize)).base = val;
+//     }
+// }
+//
+// pub unsafe fn set_check(mut d: *mut DArray, mut s: TrieIndex, mut val: TrieIndex) {
+//     if (s < (*d).num_cells) as libc::c_int as libc::c_long != 0 {
+//         (*((*d).cells).offset(s as isize)).check = val;
+//     }
+// }
+
+// pub unsafe fn da_walk(mut d: *const DArray, mut s: *mut TrieIndex, mut c: TrieChar) -> Bool {
+//     let mut next: TrieIndex = (*d).get_base(*s) + c as libc::c_int;
+//     if (*d).get_check(next) == *s {
+//         *s = next;
+//         return DA_TRUE;
+//     }
+//     return DA_FALSE;
+// }
+impl DArray {
+    // pub unsafe fn da_insert_branch(
+    //     &mut self,
+    //     // mut d: *mut DArray,
+    //     mut s: TrieIndex,
+    //     mut c: TrieChar,
+    // ) -> TrieIndex {
+    //     // let mut base: TrieIndex = 0;
+    //     let mut next: TrieIndex = 0;
+    //     let mut base = self.get_base(s);
+    //     if base > 0 as libc::c_int {
+    //         next = base + c as libc::c_int;
+    //         if self.get_check(next) == s {
+    //             return next;
+    //         }
+    //         if base > 0x7fffffff as libc::c_int - c as libc::c_int
+    //             || self.check_free_cell(next) as u64 == 0
+    //         {
+    //             // let mut symbols: *mut Symbols = 0 as *mut Symbols;
+    //             let mut new_base: TrieIndex = 0;
+    //             let mut symbols = self.output_symbols(s);
+    //             symbols.add(c);
+    //             new_base = self.find_free_base(&symbols);
+    //             if (0 as libc::c_int == new_base) as libc::c_int as libc::c_long != 0 {
+    //                 return 0 as libc::c_int;
+    //             }
+    //             self.relocate_base(s, new_base);
+    //             next = new_base + c as libc::c_int;
+    //         }
+    //     } else {
+    //         // let mut symbols_0: *mut Symbols = 0 as *mut Symbols;
+    //         let mut new_base_0: TrieIndex = 0;
+    //         let mut symbols_0 = Symbols::new();
+    //         symbols_0.add(c);
+    //         new_base_0 = self.find_free_base(&symbols_0);
+    //         if (0 as libc::c_int == new_base_0) as libc::c_int as libc::c_long != 0 {
+    //             return 0 as libc::c_int;
+    //         }
+    //         self.set_base(s, new_base_0);
+    //         next = new_base_0 + c as libc::c_int;
+    //     }
+    //     self.alloc_cell(next);
+    //     self.set_check(next, s);
+    //     return next;
+    // }
+    unsafe fn check_free_cell(&mut self, mut s: TrieIndex) -> Bool {
+        return (self.extend_pool(s) as libc::c_uint != 0 && self.get_check(s) < 0 as libc::c_int)
+            as libc::c_int as Bool;
+    }
+    unsafe fn has_children(&self, mut s: TrieIndex) -> Bool {
+        let mut base: TrieIndex = 0;
+        let mut c: TrieIndex = 0;
+        let mut max_c: TrieIndex = 0;
+        let mut base = self.get_base(s);
+        if 0 as libc::c_int == base || base < 0 as libc::c_int {
+            return DA_FALSE;
+        }
+        max_c = if (255 as libc::c_int) < self.num_cells - base {
+            255 as libc::c_int
+        } else {
+            self.num_cells - base
+        };
+        c = 0 as libc::c_int;
+        while c <= max_c {
+            if self.get_check(base + c) == s {
+                return DA_TRUE;
+            }
+            c += 1;
+        }
+        return DA_FALSE;
+    }
 }
 impl DArray {
     pub fn output_symbols(&self, s: TrieIndex) -> Symbols {
@@ -727,171 +661,172 @@ impl DArray {
         }
         return syms;
     }
-}
 
-unsafe extern "C" fn da_find_free_base(mut d: *mut DArray, mut symbols: &Symbols) -> TrieIndex {
-    let mut first_sym: TrieChar = 0;
-    let mut s: TrieIndex = 0;
-    first_sym = symbols.get(0 as usize);
-    s = -(*d).get_check(1 as libc::c_int);
-    while s != 1 as libc::c_int && s < first_sym as TrieIndex + 3 as libc::c_int {
-        s = -(*d).get_check(s);
-    }
-    if s == 1 as libc::c_int {
-        s = first_sym as libc::c_int + 3 as libc::c_int;
-        loop {
-            if da_extend_pool(d, s) as u64 == 0 {
-                return 0 as libc::c_int;
-            }
-            if (*d).get_check(s) < 0 as libc::c_int {
-                break;
-            }
-            s += 1;
-            s;
+    unsafe fn find_free_base(&mut self, mut symbols: &Symbols) -> TrieIndex {
+        let mut first_sym: TrieChar = 0;
+        let mut s: TrieIndex = 0;
+        first_sym = symbols.get(0 as usize);
+        s = -self.get_check(1 as libc::c_int);
+        while s != 1 as libc::c_int && s < first_sym as TrieIndex + 3 as libc::c_int {
+            s = -self.get_check(s);
         }
-    }
-    while da_fit_symbols(d, s - first_sym as libc::c_int, symbols) as u64 == 0 {
-        if -(*d).get_check(s) == 1 as libc::c_int {
-            if (da_extend_pool(d, (*d).num_cells) as u64 == 0) as libc::c_int as libc::c_long != 0 {
-                return 0 as libc::c_int;
+        if s == 1 as libc::c_int {
+            s = first_sym as libc::c_int + 3 as libc::c_int;
+            loop {
+                if self.extend_pool(s) as u64 == 0 {
+                    return 0 as libc::c_int;
+                }
+                if self.get_check(s) < 0 as libc::c_int {
+                    break;
+                }
+                s += 1;
+                s;
             }
         }
-        s = -(*d).get_check(s);
+        while self.fit_symbols(s - first_sym as libc::c_int, symbols) as u64 == 0 {
+            if -self.get_check(s) == 1 as libc::c_int {
+                if (self.extend_pool(self.num_cells) as u64 == 0) as libc::c_int as libc::c_long
+                    != 0
+                {
+                    return 0 as libc::c_int;
+                }
+            }
+            s = -self.get_check(s);
+        }
+        return s - first_sym as libc::c_int;
     }
-    return s - first_sym as libc::c_int;
-}
-unsafe extern "C" fn da_fit_symbols(
-    mut d: *mut DArray,
-    mut base: TrieIndex,
-    symbols: &Symbols,
-) -> Bool {
-    let mut i = 0;
-    while i < symbols.num() {
-        let mut sym: TrieChar = symbols.get(i);
-        if base > 0x7fffffff as libc::c_int - sym as libc::c_int
-            || da_check_free_cell(d, base + sym as libc::c_int) as u64 == 0
+    unsafe fn fit_symbols(&mut self, mut base: TrieIndex, symbols: &Symbols) -> Bool {
+        let mut i = 0;
+        while i < symbols.num() {
+            let mut sym: TrieChar = symbols.get(i);
+            if base > 0x7fffffff as libc::c_int - sym as libc::c_int
+                || self.check_free_cell(base + sym as libc::c_int) as u64 == 0
+            {
+                return DA_FALSE;
+            }
+            i += 1;
+        }
+        return DA_TRUE;
+    }
+    unsafe fn relocate_base(&mut self, mut s: TrieIndex, mut new_base: TrieIndex) {
+        let mut old_base: TrieIndex = 0;
+        // let mut symbols: *mut Symbols = 0 as *mut Symbols;
+        // let mut i: libc::c_int = 0;
+        old_base = self.get_base(s);
+        let symbols = self.output_symbols(s);
+        // i = 0 as libc::c_int;
+        let mut i = 0;
+        while i < symbols.num() {
+            let mut old_next: TrieIndex = 0;
+            let mut new_next: TrieIndex = 0;
+            let mut old_next_base: TrieIndex = 0;
+            old_next = old_base + symbols.get(i) as libc::c_int;
+            new_next = new_base + symbols.get(i) as libc::c_int;
+            old_next_base = self.get_base(old_next);
+            self.alloc_cell(new_next);
+            self.set_check(new_next, s);
+            self.set_base(new_next, old_next_base);
+            if old_next_base > 0 as libc::c_int {
+                let mut c: TrieIndex = 0;
+                let mut max_c: TrieIndex = if (255 as libc::c_int) < self.num_cells - old_next_base
+                {
+                    255 as libc::c_int
+                } else {
+                    self.num_cells - old_next_base
+                };
+                c = 0 as libc::c_int;
+                while c <= max_c {
+                    if self.get_check(old_next_base + c) == old_next {
+                        self.set_check(old_next_base + c, new_next);
+                    }
+                    c += 1;
+                }
+            }
+            self.free_cell(old_next);
+            i += 1;
+        }
+        self.set_base(s, new_base);
+    }
+    unsafe fn extend_pool(&mut self, to_index: TrieIndex) -> Bool {
+        let mut new_block: *mut libc::c_void = 0 as *mut libc::c_void;
+        let mut new_begin: TrieIndex = 0;
+        let mut i: TrieIndex = 0;
+        let mut free_tail: TrieIndex = 0;
+        if (to_index <= 0 as libc::c_int || 0x7fffffff as libc::c_int <= to_index) as libc::c_int
+            as libc::c_long
+            != 0
         {
             return DA_FALSE;
         }
-        i += 1;
-    }
-    return DA_TRUE;
-}
-unsafe extern "C" fn da_relocate_base(
-    mut d: *mut DArray,
-    mut s: TrieIndex,
-    mut new_base: TrieIndex,
-) {
-    let mut old_base: TrieIndex = 0;
-    // let mut symbols: *mut Symbols = 0 as *mut Symbols;
-    // let mut i: libc::c_int = 0;
-    old_base = (*d).get_base(s);
-    let symbols = (*d).output_symbols(s);
-    // i = 0 as libc::c_int;
-    let mut i = 0;
-    while i < symbols.num() {
-        let mut old_next: TrieIndex = 0;
-        let mut new_next: TrieIndex = 0;
-        let mut old_next_base: TrieIndex = 0;
-        old_next = old_base + symbols.get(i) as libc::c_int;
-        new_next = new_base + symbols.get(i) as libc::c_int;
-        old_next_base = (*d).get_base(old_next);
-        da_alloc_cell(d, new_next);
-        da_set_check(d, new_next, s);
-        da_set_base(d, new_next, old_next_base);
-        if old_next_base > 0 as libc::c_int {
-            let mut c: TrieIndex = 0;
-            let mut max_c: TrieIndex = if (255 as libc::c_int) < (*d).num_cells - old_next_base {
-                255 as libc::c_int
-            } else {
-                (*d).num_cells - old_next_base
-            };
-            c = 0 as libc::c_int;
-            while c <= max_c {
-                if (*d).get_check(old_next_base + c) == old_next {
-                    da_set_check(d, old_next_base + c, new_next);
-                }
-                c += 1;
-            }
+        if to_index < self.num_cells {
+            return DA_TRUE;
         }
-        da_free_cell(d, old_next);
-        i += 1;
-    }
-    da_set_base(d, s, new_base);
-}
-unsafe extern "C" fn da_extend_pool(d: *mut DArray, to_index: TrieIndex) -> Bool {
-    let mut new_block: *mut libc::c_void = 0 as *mut libc::c_void;
-    let mut new_begin: TrieIndex = 0;
-    let mut i: TrieIndex = 0;
-    let mut free_tail: TrieIndex = 0;
-    if (to_index <= 0 as libc::c_int || 0x7fffffff as libc::c_int <= to_index) as libc::c_int
-        as libc::c_long
-        != 0
-    {
-        return DA_FALSE;
-    }
-    if to_index < (*d).num_cells {
+        new_block = realloc(
+            self.cells as *mut libc::c_void,
+            ((to_index + 1 as libc::c_int) as libc::c_ulong)
+                .wrapping_mul(::core::mem::size_of::<DACell>() as libc::c_ulong),
+        );
+        if new_block.is_null() as libc::c_int as libc::c_long != 0 {
+            return DA_FALSE;
+        }
+        self.cells = new_block as *mut DACell;
+        new_begin = self.num_cells;
+        self.num_cells = to_index + 1 as libc::c_int;
+        self.cells2.reserve((to_index + 1) as usize);
+        for _ in new_begin..(to_index + 1) {
+            self.cells2.push(DACell { base: 0, check: 0 });
+        }
+        assert_eq!(self.num_cells as usize, self.cells2.len());
+
+        i = new_begin;
+        while i < to_index {
+            self.set_check(i, -(i + 1 as libc::c_int));
+            self.set_base(i + 1 as libc::c_int, -i);
+            i += 1;
+        }
+        free_tail = -self.get_base(1 as libc::c_int);
+        self.set_check(free_tail, -new_begin);
+        self.set_base(new_begin, -free_tail);
+        self.set_check(to_index, -(1 as libc::c_int));
+        self.set_base(1 as libc::c_int, -to_index);
+        // (*self.cells.offset(0 as libc::c_int as isize)).check = self.num_cells;
+        self.set_check(0, self.num_cells);
         return DA_TRUE;
     }
-    new_block = realloc(
-        (*d).cells as *mut libc::c_void,
-        ((to_index + 1 as libc::c_int) as libc::c_ulong)
-            .wrapping_mul(::core::mem::size_of::<DACell>() as libc::c_ulong),
-    );
-    if new_block.is_null() as libc::c_int as libc::c_long != 0 {
-        return DA_FALSE;
+
+    pub unsafe fn prune(&mut self, mut s: TrieIndex) {
+        self.prune_upto(self.get_root(), s);
     }
-    (*d).cells = new_block as *mut DACell;
-    new_begin = (*d).num_cells;
-    (*d).num_cells = to_index + 1 as libc::c_int;
-    i = new_begin;
-    while i < to_index {
-        da_set_check(d, i, -(i + 1 as libc::c_int));
-        da_set_base(d, i + 1 as libc::c_int, -i);
-        i += 1;
-        i;
+
+    pub unsafe fn prune_upto(&mut self, mut p: TrieIndex, mut s: TrieIndex) {
+        while p != s && self.has_children(s) as u64 == 0 {
+            let mut parent: TrieIndex = 0;
+            parent = self.get_check(s);
+            self.free_cell(s);
+            s = parent;
+        }
     }
-    free_tail = -(*d).get_base(1 as libc::c_int);
-    da_set_check(d, free_tail, -new_begin);
-    da_set_base(d, new_begin, -free_tail);
-    da_set_check(d, to_index, -(1 as libc::c_int));
-    da_set_base(d, 1 as libc::c_int, -to_index);
-    (*((*d).cells).offset(0 as libc::c_int as isize)).check = (*d).num_cells;
-    return DA_TRUE;
-}
-#[no_mangle]
-pub unsafe extern "C" fn da_prune(mut d: *mut DArray, mut s: TrieIndex) {
-    da_prune_upto(d, (*d).get_root(), s);
-}
-#[no_mangle]
-pub unsafe extern "C" fn da_prune_upto(mut d: *mut DArray, mut p: TrieIndex, mut s: TrieIndex) {
-    while p != s && da_has_children(d, s) as u64 == 0 {
-        let mut parent: TrieIndex = 0;
-        parent = (*d).get_check(s);
-        da_free_cell(d, s);
-        s = parent;
+    unsafe fn alloc_cell(&mut self, mut cell: TrieIndex) {
+        let mut prev: TrieIndex = 0;
+        let mut next: TrieIndex = 0;
+        prev = -self.get_base(cell);
+        next = -self.get_check(cell);
+        self.set_check(prev, -next);
+        self.set_base(next, -prev);
     }
-}
-unsafe extern "C" fn da_alloc_cell(mut d: *mut DArray, mut cell: TrieIndex) {
-    let mut prev: TrieIndex = 0;
-    let mut next: TrieIndex = 0;
-    prev = -(*d).get_base(cell);
-    next = -(*d).get_check(cell);
-    da_set_check(d, prev, -next);
-    da_set_base(d, next, -prev);
-}
-unsafe extern "C" fn da_free_cell(d: *mut DArray, cell: TrieIndex) {
-    let mut i: TrieIndex = 0;
-    let mut prev: TrieIndex = 0;
-    i = -(*d).get_check(1 as libc::c_int);
-    while i != 1 as libc::c_int && i < cell {
-        i = -(*d).get_check(i);
+    unsafe fn free_cell(&mut self, cell: TrieIndex) {
+        let mut i: TrieIndex = 0;
+        let mut prev: TrieIndex = 0;
+        i = -self.get_check(1 as libc::c_int);
+        while i != 1 as libc::c_int && i < cell {
+            i = -self.get_check(i);
+        }
+        prev = -self.get_base(i);
+        self.set_check(cell, -i);
+        self.set_base(cell, -prev);
+        self.set_check(prev, -cell);
+        self.set_base(i, -cell);
     }
-    prev = -(*d).get_base(i);
-    da_set_check(d, cell, -i);
-    da_set_base(d, cell, -prev);
-    da_set_check(d, prev, -cell);
-    da_set_base(d, i, -cell);
 }
 impl DArray {
     pub unsafe fn first_separate(
@@ -964,76 +899,76 @@ impl DArray {
         return 0 as libc::c_int;
     }
 }
-#[no_mangle]
-pub unsafe extern "C" fn da_first_separate(
-    d: *mut DArray,
-    mut root: TrieIndex,
-    keybuff: *mut TrieString,
-) -> TrieIndex {
-    let mut base: TrieIndex = 0;
-    let mut c: TrieIndex = 0;
-    let mut max_c: TrieIndex = 0;
-    loop {
-        base = (*d).get_base(root);
-        if !(base >= 0 as libc::c_int) {
-            break;
-        }
-        max_c = if (255 as libc::c_int) < (*d).num_cells - base {
-            255 as libc::c_int
-        } else {
-            (*d).num_cells - base
-        };
-        c = 0 as libc::c_int;
-        while c <= max_c {
-            if (*d).get_check(base + c) == root {
-                break;
-            }
-            c += 1;
-            c;
-        }
-        if c > max_c {
-            return 0 as libc::c_int;
-        }
-        trie_string_append_char(keybuff, c as TrieChar);
-        root = base + c;
-    }
-    return root;
-}
-#[no_mangle]
-pub unsafe extern "C" fn da_next_separate(
-    mut d: *mut DArray,
-    mut root: TrieIndex,
-    mut sep: TrieIndex,
-    mut keybuff: *mut TrieString,
-) -> TrieIndex {
-    let mut parent: TrieIndex = 0;
-    let mut base: TrieIndex = 0;
-    let mut c: TrieIndex = 0;
-    let mut max_c: TrieIndex = 0;
-    while sep != root {
-        parent = (*d).get_check(sep);
-        base = (*d).get_base(parent);
-        c = sep - base;
-        trie_string_cut_last(keybuff);
-        max_c = if (255 as libc::c_int) < (*d).num_cells - base {
-            255 as libc::c_int
-        } else {
-            (*d).num_cells - base
-        };
-        loop {
-            c += 1;
-            if !(c <= max_c) {
-                break;
-            }
-            if (*d).get_check(base + c) == parent {
-                trie_string_append_char(keybuff, c as TrieChar);
-                return da_first_separate(d, base + c, keybuff);
-            }
-        }
-        sep = parent;
-    }
-    return 0 as libc::c_int;
-}
+
+// pub unsafe fn first_separate(
+//     d: *mut DArray,
+//     mut root: TrieIndex,
+//     keybuff: *mut TrieString,
+// ) -> TrieIndex {
+//     let mut base: TrieIndex = 0;
+//     let mut c: TrieIndex = 0;
+//     let mut max_c: TrieIndex = 0;
+//     loop {
+//         base = (*d).get_base(root);
+//         if !(base >= 0 as libc::c_int) {
+//             break;
+//         }
+//         max_c = if (255 as libc::c_int) < (*d).num_cells - base {
+//             255 as libc::c_int
+//         } else {
+//             (*d).num_cells - base
+//         };
+//         c = 0 as libc::c_int;
+//         while c <= max_c {
+//             if (*d).get_check(base + c) == root {
+//                 break;
+//             }
+//             c += 1;
+//             c;
+//         }
+//         if c > max_c {
+//             return 0 as libc::c_int;
+//         }
+//         trie_string_append_char(keybuff, c as TrieChar);
+//         root = base + c;
+//     }
+//     return root;
+// }
+
+// pub unsafe fn next_separate(
+//     mut d: *mut DArray,
+//     mut root: TrieIndex,
+//     mut sep: TrieIndex,
+//     mut keybuff: *mut TrieString,
+// ) -> TrieIndex {
+//     let mut parent: TrieIndex = 0;
+//     let mut base: TrieIndex = 0;
+//     let mut c: TrieIndex = 0;
+//     let mut max_c: TrieIndex = 0;
+//     while sep != root {
+//         parent = (*d).get_check(sep);
+//         base = (*d).get_base(parent);
+//         c = sep - base;
+//         trie_string_cut_last(keybuff);
+//         max_c = if (255 as libc::c_int) < (*d).num_cells - base {
+//             255 as libc::c_int
+//         } else {
+//             (*d).num_cells - base
+//         };
+//         loop {
+//             c += 1;
+//             if !(c <= max_c) {
+//                 break;
+//             }
+//             if (*d).get_check(base + c) == parent {
+//                 trie_string_append_char(keybuff, c as TrieChar);
+//                 return first_separate(d, base + c, keybuff);
+//             }
+//         }
+//         sep = parent;
+//     }
+//     return 0 as libc::c_int;
+// }
 
 #[cfg(test)]
 mod tests {

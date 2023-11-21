@@ -230,7 +230,7 @@ impl Trie {
             if 0x7fffffff as libc::c_int == tc {
                 return DA_FALSE;
             }
-            if da_walk((*trie).da.as_ref(), &mut s, tc as TrieChar) as u64 == 0 {
+            if (*trie).da.walk(&mut s, tc as TrieChar) as u64 == 0 {
                 return DA_FALSE;
             }
             if 0 as libc::c_int as libc::c_uint == *p {
@@ -288,7 +288,7 @@ impl Trie {
             if 0x7fffffff as libc::c_int == tc {
                 return DA_FALSE;
             }
-            if da_walk((*trie).da.as_ref(), &mut s, tc as TrieChar) as u64 == 0 {
+            if (*trie).da.walk(&mut s, tc as TrieChar) as u64 == 0 {
                 let mut key_str: *mut TrieChar = 0 as *mut TrieChar;
                 let mut res: Bool = DA_FALSE;
                 key_str = alpha_map_char_to_trie_str((*trie).alpha_map.as_ref(), p);
@@ -345,7 +345,8 @@ impl Trie {
     ) -> Bool {
         let mut new_da: TrieIndex = 0;
         let mut new_tail: TrieIndex = 0;
-        new_da = da_insert_branch((*trie).da.as_mut(), sep_node, *suffix);
+        // let self = unsafe {}
+        new_da = (*trie).da.insert_branch(sep_node, *suffix);
         if 0 as libc::c_int == new_da {
             return DA_FALSE;
         }
@@ -355,7 +356,7 @@ impl Trie {
         }
         new_tail = tail_add_suffix((*trie).tail, suffix);
         tail_set_data((*trie).tail, new_tail, data);
-        da_set_base((*trie).da.as_mut(), new_da, -new_tail);
+        (*trie).da.set_base(new_da, -new_tail);
         (*trie).is_dirty = DA_TRUE;
         return DA_TRUE;
     }
@@ -383,34 +384,31 @@ impl Trie {
                 current_block = 6937071982253665452;
                 break;
             }
-            let mut t: TrieIndex = da_insert_branch((*trie).da.as_mut(), s, *p);
+            let mut t: TrieIndex = (*trie).da.insert_branch(s, *p);
             if 0 as libc::c_int == t {
                 current_block = 13151848498364941746;
                 break;
             }
             s = t;
             p = p.offset(1);
-            p;
             suffix = suffix.offset(1);
-            suffix;
         }
         match current_block {
             6937071982253665452 => {
-                old_da = da_insert_branch((*trie).da.as_mut(), s, *p);
+                old_da = (*trie).da.insert_branch(s, *p);
                 if !(0 as libc::c_int == old_da) {
                     if '\0' as i32 != *p as libc::c_int {
                         p = p.offset(1);
-                        p;
                     }
                     tail_set_suffix((*trie).tail, old_tail, p);
-                    da_set_base((*trie).da.as_mut(), old_da, -old_tail);
+                    (*trie).da.set_base(old_da, -old_tail);
                     return Trie::branch_in_branch(trie, s, suffix, data);
                 }
             }
             _ => {}
         }
-        da_prune_upto((*trie).da.as_mut(), sep_node, s);
-        da_set_base((*trie).da.as_mut(), sep_node, -old_tail);
+        (*trie).da.prune_upto(sep_node, s);
+        (*trie).da.set_base(sep_node, -old_tail);
         return DA_FALSE;
     }
 }
@@ -428,7 +426,7 @@ impl Trie {
             if 0x7fffffff as libc::c_int == tc {
                 return DA_FALSE;
             }
-            if da_walk((*trie).da.as_ref(), &mut s, tc as TrieChar) as u64 == 0 {
+            if (*trie).da.walk(&mut s, tc as TrieChar) as u64 == 0 {
                 return DA_FALSE;
             }
             if 0 as libc::c_int as libc::c_uint == *p {
@@ -454,8 +452,8 @@ impl Trie {
             p;
         }
         tail_delete((*trie).tail, t);
-        da_set_base((*trie).da.as_mut(), s, 0 as libc::c_int);
-        da_prune((*trie).da.as_mut(), s);
+        (*trie).da.set_base(s, 0 as libc::c_int);
+        (*trie).da.prune(s);
         (*trie).is_dirty = DA_TRUE;
         return DA_TRUE;
     }
@@ -521,30 +519,29 @@ impl TrieState {
         return s;
     }
 
-    pub unsafe fn trie_state_copy(mut dst: *mut TrieState, mut src: *const TrieState) {
+    pub unsafe fn trie_state_copy(dst: *mut TrieState, src: *const TrieState) {
         *dst = *src;
     }
-    pub unsafe fn trie_state_clone(mut s: *const TrieState) -> *mut TrieState {
+    pub unsafe fn trie_state_clone(s: *const TrieState) -> *mut TrieState {
         return TrieState::new((*s).trie, (*s).index, (*s).suffix_idx, (*s).is_suffix);
     }
 
-    pub unsafe fn free(mut s: *mut TrieState) {
+    pub unsafe fn free(s: *mut TrieState) {
         free(s as *mut libc::c_void);
     }
 
-    pub unsafe fn rewind(mut s: *mut TrieState) {
+    pub unsafe fn rewind(s: *mut TrieState) {
         (*s).index = (*(*(*s).trie).da).get_root();
         (*s).is_suffix = DA_FALSE as libc::c_int as libc::c_short;
     }
 
-    pub unsafe fn walk(mut s: *mut TrieState, mut c: AlphaChar) -> Bool {
-        let mut tc: TrieIndex = alpha_map_char_to_trie((*(*s).trie).alpha_map.as_ref(), c);
+    pub unsafe fn walk(s: *mut TrieState, c: AlphaChar) -> Bool {
+        let tc: TrieIndex = alpha_map_char_to_trie((*(*s).trie).alpha_map.as_ref(), c);
         if (0x7fffffff as libc::c_int == tc) as libc::c_int as libc::c_long != 0 {
             return DA_FALSE;
         }
         if (*s).is_suffix == 0 {
-            let mut ret: Bool = DA_FALSE;
-            ret = da_walk((*(*s).trie).da.as_ref(), &mut (*s).index, tc as TrieChar);
+            let ret: Bool = (*(*s).trie).da.walk(&mut (*s).index, tc as TrieChar);
             if ret as libc::c_uint != 0
                 && (*(*(*s).trie).da).get_base((*s).index) < 0 as libc::c_int
             {
@@ -622,13 +619,7 @@ impl TrieState {
         }
         if (*s).is_suffix == 0 {
             let mut index: TrieIndex = (*s).index;
-            if da_walk(
-                (*(*s).trie).da.as_ref(),
-                &mut index,
-                '\0' as i32 as TrieChar,
-            ) as u64
-                != 0
-            {
+            if (*(*s).trie).da.walk(&mut index, '\0' as i32 as TrieChar) as u64 != 0 {
                 if (*(*(*s).trie).da).get_base(index) < 0 as libc::c_int {
                     index = -(*(*(*s).trie).da).get_base(index);
                     return tail_get_data((*(*s).trie).tail, index);
