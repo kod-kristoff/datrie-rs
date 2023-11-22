@@ -183,18 +183,16 @@ impl Trie {
         (*trie).is_dirty = DA_FALSE;
     }
     pub fn serialize_safe(&mut self, mut writer: impl std::io::Write) -> DatrieResult<()> {
-        let self_da = unsafe { &*self.da };
         let self_tail = unsafe { &*self.tail };
         self.alpha_map.serialize(&mut writer)?;
-        self_da.serialize(&mut writer)?;
+        self.da.serialize(&mut writer)?;
         self_tail.serialize(&mut writer)?;
         Ok(())
     }
     pub fn serialize_to_slice(&mut self, buf: &mut [u8]) -> DatrieResult<usize> {
-        let self_da = unsafe { &*self.da };
         let self_tail = unsafe { &*self.tail };
         let mut start = self.alpha_map.serialize_to_slice(buf)?;
-        start += self_da.serialize_to_slice(&mut buf[start..])?;
+        start += self.da.serialize_to_slice(&mut buf[start..])?;
         start += self_tail.serialize_to_slice(&mut buf[start..])?;
         Ok(start)
     }
@@ -211,91 +209,97 @@ impl Trie {
         (*trie).is_dirty = DA_FALSE;
         return 0 as libc::c_int;
     }
-    pub unsafe fn is_dirty(trie: *const Trie) -> Bool {
-        return (*trie).is_dirty;
+    pub fn is_dirty(&self) -> Bool {
+        return self.is_dirty;
     }
-    pub unsafe fn retrieve(
-        mut trie: *const Trie,
-        mut key: *const AlphaChar,
-        mut o_data: *mut TrieData,
-    ) -> Bool {
+    pub fn retrieve(&self, key: *const AlphaChar, o_data: *mut TrieData) -> Bool {
         // let mut s: TrieIndex = 0;
-        let mut suffix_idx: libc::c_short = 0;
-        let mut p: *const AlphaChar = 0 as *const AlphaChar;
+        // let mut suffix_idx: libc::c_short = 0;
+        // let mut p: *const AlphaChar = 0 as *const AlphaChar;
         // s = da_get_root((*trie).da);
-        let mut s = (*(*trie).da).get_root();
-        p = key;
-        while !((*(*trie).da).get_base(s) < 0 as libc::c_int) {
-            let mut tc: TrieIndex = alpha_map_char_to_trie((*trie).alpha_map.as_ref(), *p);
+        let mut s = self.da.get_root();
+        let mut p: *const AlphaChar = key;
+        while !(self.da.get_base(s) < 0 as libc::c_int) {
+            let tc: TrieIndex = unsafe { alpha_map_char_to_trie(self.alpha_map.as_ref(), *p) };
             if 0x7fffffff as libc::c_int == tc {
                 return DA_FALSE;
             }
-            if (*trie).da.walk(&mut s, tc as TrieChar) as u64 == 0 {
+            if self.da.walk(&mut s, tc as TrieChar) as u64 == 0 {
                 return DA_FALSE;
             }
-            if 0 as libc::c_int as libc::c_uint == *p {
+            // if p.is_null() {
+            //     break;
+            // }
+            if unsafe { 0 as libc::c_uint == *p } {
                 break;
             }
-            p = p.offset(1);
-            p;
+            p = unsafe { p.offset(1) };
         }
-        s = -(*(*trie).da).get_base(s);
-        suffix_idx = 0 as libc::c_int as libc::c_short;
+        s = -self.da.get_base(s);
+        let mut suffix_idx: libc::c_short = 0;
         loop {
-            let mut tc_0: TrieIndex = alpha_map_char_to_trie((*trie).alpha_map.as_ref(), *p);
+            let tc_0: TrieIndex = unsafe { alpha_map_char_to_trie(self.alpha_map.as_ref(), *p) };
+
             if 0x7fffffff as libc::c_int == tc_0 {
                 return DA_FALSE;
             }
-            if tail_walk_char((*trie).tail, s, &mut suffix_idx, tc_0 as TrieChar) as u64 == 0 {
+            if unsafe { tail_walk_char(self.tail, s, &mut suffix_idx, tc_0 as TrieChar) } as u64
+                == 0
+            {
                 return DA_FALSE;
             }
-            if 0 as libc::c_int as libc::c_uint == *p {
+            // if p.is_null() {
+            //     break;
+            // }
+            if unsafe { 0 as libc::c_uint == *p } {
                 break;
             }
-            p = p.offset(1);
-            p;
+            p = unsafe { p.offset(1) };
         }
         if !o_data.is_null() {
-            *o_data = tail_get_data((*trie).tail, s);
+            unsafe {
+                *o_data = tail_get_data(self.tail, s);
+            }
         }
         return DA_TRUE;
     }
 
-    pub unsafe fn store(trie: *mut Trie, key: *const AlphaChar, data: TrieData) -> Bool {
-        return Trie::store_conditionally(trie, key, data, DA_TRUE);
+    pub unsafe fn store(&mut self, key: *const AlphaChar, data: TrieData) -> Bool {
+        return self.store_conditionally(key, data, DA_TRUE);
     }
 
-    pub unsafe fn store_if_absent(trie: *mut Trie, key: *const AlphaChar, data: TrieData) -> Bool {
-        return Trie::store_conditionally(trie, key, data, DA_FALSE);
+    pub unsafe fn store_if_absent(&mut self, key: *const AlphaChar, data: TrieData) -> Bool {
+        return self.store_conditionally(key, data, DA_FALSE);
     }
     unsafe fn store_conditionally(
-        trie: *mut Trie,
+        &mut self,
+        // trie: *mut Trie,
         key: *const AlphaChar,
         data: TrieData,
         is_overwrite: Bool,
     ) -> Bool {
         // dbg!(&*trie);
         // dbg!(&*key);
-        let mut s: TrieIndex = 0;
-        let mut t: TrieIndex = 0;
-        let mut suffix_idx: libc::c_short = 0;
-        let mut p: *const AlphaChar = 0 as *const AlphaChar;
-        let mut sep: *const AlphaChar = 0 as *const AlphaChar;
-        s = (*(*trie).da).get_root();
-        p = key;
-        while !((*(*trie).da).get_base(s) < 0 as libc::c_int) {
-            let mut tc: TrieIndex = alpha_map_char_to_trie((*trie).alpha_map.as_ref(), *p);
+        // let mut s: TrieIndex = 0;
+        // let mut t: TrieIndex = 0;
+        // let mut suffix_idx: libc::c_short = 0;
+        // let mut p: *const AlphaChar = 0 as *const AlphaChar;
+        // let mut sep: *const AlphaChar = 0 as *const AlphaChar;
+        let mut s = self.da.get_root();
+        let mut p: *const AlphaChar = key;
+        while !(self.da.get_base(s) < 0 as libc::c_int) {
+            let tc: TrieIndex = alpha_map_char_to_trie(self.alpha_map.as_ref(), *p);
             if 0x7fffffff as libc::c_int == tc {
                 return DA_FALSE;
             }
-            if (*trie).da.walk(&mut s, tc as TrieChar) as u64 == 0 {
-                let mut key_str: *mut TrieChar = 0 as *mut TrieChar;
-                let mut res: Bool = DA_FALSE;
-                key_str = alpha_map_char_to_trie_str((*trie).alpha_map.as_ref(), p);
+            if self.da.walk(&mut s, tc as TrieChar) as u64 == 0 {
+                // let mut key_str: *mut TrieChar = 0 as *mut TrieChar;
+                // let mut res: Bool = DA_FALSE;
+                let key_str = alpha_map_char_to_trie_str(self.alpha_map.as_ref(), p);
                 if key_str.is_null() {
                     return DA_FALSE;
                 }
-                res = Trie::branch_in_branch(trie, s, key_str, data);
+                let res = self.branch_in_branch(s, key_str, data);
                 free(key_str as *mut libc::c_void);
                 return res;
             }
@@ -303,24 +307,24 @@ impl Trie {
                 break;
             }
             p = p.offset(1);
-            p;
         }
-        sep = p;
-        t = -(*(*trie).da).get_base(s);
-        suffix_idx = 0 as libc::c_int as libc::c_short;
+        let sep: *const AlphaChar = p;
+        let t = -(*self.da).get_base(s);
+        // suffix_idx = 0 as libc::c_int as libc::c_short;
+        let mut suffix_idx: libc::c_short = 0;
         loop {
-            let mut tc_0: TrieIndex = alpha_map_char_to_trie((*trie).alpha_map.as_ref(), *p);
+            let tc_0: TrieIndex = alpha_map_char_to_trie(self.alpha_map.as_ref(), *p);
             if 0x7fffffff as libc::c_int == tc_0 {
                 return DA_FALSE;
             }
-            if tail_walk_char((*trie).tail, t, &mut suffix_idx, tc_0 as TrieChar) as u64 == 0 {
-                let mut tail_str: *mut TrieChar = 0 as *mut TrieChar;
-                let mut res_0: Bool = DA_FALSE;
-                tail_str = alpha_map_char_to_trie_str((*trie).alpha_map.as_ref(), sep);
+            if tail_walk_char(self.tail, t, &mut suffix_idx, tc_0 as TrieChar) as u64 == 0 {
+                // let mut tail_str: *mut TrieChar = 0 as *mut TrieChar;
+                // let mut res_0: Bool = DA_FALSE;
+                let tail_str = alpha_map_char_to_trie_str(self.alpha_map.as_ref(), sep);
                 if tail_str.is_null() {
                     return DA_FALSE;
                 }
-                res_0 = Trie::branch_in_tail(trie, s, tail_str, data);
+                let res_0 = self.branch_in_tail(s, tail_str, data);
                 free(tail_str as *mut libc::c_void);
                 return res_0;
             }
@@ -328,63 +332,63 @@ impl Trie {
                 break;
             }
             p = p.offset(1);
-            p;
         }
         if is_overwrite as u64 == 0 {
             return DA_FALSE;
         }
-        tail_set_data((*trie).tail, t, data);
-        (*trie).is_dirty = DA_TRUE;
+        tail_set_data(self.tail, t, data);
+        self.is_dirty = DA_TRUE;
         return DA_TRUE;
     }
     unsafe fn branch_in_branch(
-        mut trie: *mut Trie,
-        mut sep_node: TrieIndex,
+        &mut self,
+        // mut trie: *mut Trie,
+        sep_node: TrieIndex,
         mut suffix: *const TrieChar,
-        mut data: TrieData,
+        data: TrieData,
     ) -> Bool {
-        let mut new_da: TrieIndex = 0;
-        let mut new_tail: TrieIndex = 0;
+        // let mut new_da: TrieIndex = 0;
+        // let mut new_tail: TrieIndex = 0;
         // let self = unsafe {}
-        new_da = (*trie).da.insert_branch(sep_node, *suffix);
+        let new_da = self.da.insert_branch(sep_node, *suffix);
         if 0 as libc::c_int == new_da {
             return DA_FALSE;
         }
         if '\0' as i32 != *suffix as libc::c_int {
             suffix = suffix.offset(1);
-            suffix;
         }
-        new_tail = tail_add_suffix((*trie).tail, suffix);
-        tail_set_data((*trie).tail, new_tail, data);
-        (*trie).da.set_base(new_da, -new_tail);
-        (*trie).is_dirty = DA_TRUE;
+        let new_tail = tail_add_suffix(self.tail, suffix);
+        tail_set_data(self.tail, new_tail, data);
+        self.da.set_base(new_da, -new_tail);
+        self.is_dirty = DA_TRUE;
         return DA_TRUE;
     }
     unsafe fn branch_in_tail(
-        mut trie: *mut Trie,
-        mut sep_node: TrieIndex,
+        &mut self,
+        // mut trie: *mut Trie,
+        sep_node: TrieIndex,
         mut suffix: *const TrieChar,
-        mut data: TrieData,
+        data: TrieData,
     ) -> Bool {
-        let mut current_block: u64;
-        let mut old_tail: TrieIndex = 0;
-        let mut old_da: TrieIndex = 0;
-        let mut s: TrieIndex = 0;
-        let mut old_suffix: *const TrieChar = 0 as *const TrieChar;
-        let mut p: *const TrieChar = 0 as *const TrieChar;
-        old_tail = -(*(*trie).da).get_base(sep_node);
-        old_suffix = tail_get_suffix((*trie).tail, old_tail);
+        let current_block: u64;
+        // let mut old_tail: TrieIndex = 0;
+        // let mut old_da: TrieIndex = 0;
+        // let mut s: TrieIndex = 0;
+        // let mut old_suffix: *const TrieChar = 0 as *const TrieChar;
+        // let mut p: *const TrieChar = 0 as *const TrieChar;
+        let old_tail = -(*self.da).get_base(sep_node);
+        let old_suffix = tail_get_suffix(self.tail, old_tail);
         if old_suffix.is_null() {
             return DA_FALSE;
         }
-        p = old_suffix;
-        s = sep_node;
+        let mut p = old_suffix;
+        let mut s = sep_node;
         loop {
             if !(*p as libc::c_int == *suffix as libc::c_int) {
                 current_block = 6937071982253665452;
                 break;
             }
-            let mut t: TrieIndex = (*trie).da.insert_branch(s, *p);
+            let t: TrieIndex = self.da.insert_branch(s, *p);
             if 0 as libc::c_int == t {
                 current_block = 13151848498364941746;
                 break;
@@ -395,89 +399,93 @@ impl Trie {
         }
         match current_block {
             6937071982253665452 => {
-                old_da = (*trie).da.insert_branch(s, *p);
+                let old_da = self.da.insert_branch(s, *p);
                 if !(0 as libc::c_int == old_da) {
                     if '\0' as i32 != *p as libc::c_int {
                         p = p.offset(1);
                     }
-                    tail_set_suffix((*trie).tail, old_tail, p);
-                    (*trie).da.set_base(old_da, -old_tail);
-                    return Trie::branch_in_branch(trie, s, suffix, data);
+                    tail_set_suffix(self.tail, old_tail, p);
+                    self.da.set_base(old_da, -old_tail);
+                    return self.branch_in_branch(s, suffix, data);
                 }
             }
             _ => {}
         }
-        (*trie).da.prune_upto(sep_node, s);
-        (*trie).da.set_base(sep_node, -old_tail);
+        self.da.prune_upto(sep_node, s);
+        self.da.set_base(sep_node, -old_tail);
         return DA_FALSE;
     }
 }
 
 impl Trie {
-    pub unsafe fn delete(mut trie: *mut Trie, mut key: *const AlphaChar) -> Bool {
-        let mut s: TrieIndex = 0;
-        let mut t: TrieIndex = 0;
-        let mut suffix_idx: libc::c_short = 0;
-        let mut p: *const AlphaChar = 0 as *const AlphaChar;
-        s = (*(*trie).da).get_root();
-        p = key;
-        while !((*(*trie).da).get_base(s) < 0 as libc::c_int) {
-            let mut tc: TrieIndex = alpha_map_char_to_trie((*trie).alpha_map.as_ref(), *p);
+    pub fn delete(&mut self, key: *const AlphaChar) -> Bool {
+        // let mut s: TrieIndex = 0;
+        // let mut t: TrieIndex = 0;
+        // let mut suffix_idx: libc::c_short = 0;
+        // let mut p: *const AlphaChar = 0 as *const AlphaChar;
+        let mut s = (*self.da).get_root();
+        let mut p = key;
+        while !((*self.da).get_base(s) < 0 as libc::c_int) {
+            let tc: TrieIndex = unsafe { alpha_map_char_to_trie(self.alpha_map.as_ref(), *p) };
             if 0x7fffffff as libc::c_int == tc {
                 return DA_FALSE;
             }
-            if (*trie).da.walk(&mut s, tc as TrieChar) as u64 == 0 {
+            if self.da.walk(&mut s, tc as TrieChar) as u64 == 0 {
                 return DA_FALSE;
             }
-            if 0 as libc::c_int as libc::c_uint == *p {
+            if unsafe { 0 as libc::c_int as libc::c_uint == *p } {
                 break;
             }
-            p = p.offset(1);
-            p;
+            p = unsafe { p.offset(1) };
         }
-        t = -(*(*trie).da).get_base(s);
-        suffix_idx = 0 as libc::c_int as libc::c_short;
+        let t = -(*self.da).get_base(s);
+        // suffix_idx = 0 as libc::c_int as libc::c_short;
+        let mut suffix_idx: libc::c_short = 0;
         loop {
-            let mut tc_0: TrieIndex = alpha_map_char_to_trie((*trie).alpha_map.as_ref(), *p);
+            let tc_0: TrieIndex = unsafe { alpha_map_char_to_trie(self.alpha_map.as_ref(), *p) };
             if 0x7fffffff as libc::c_int == tc_0 {
                 return DA_FALSE;
             }
-            if tail_walk_char((*trie).tail, t, &mut suffix_idx, tc_0 as TrieChar) as u64 == 0 {
+            if unsafe {
+                tail_walk_char(self.tail, t, &mut suffix_idx, tc_0 as TrieChar) as u64 == 0
+            } {
                 return DA_FALSE;
             }
-            if 0 as libc::c_int as libc::c_uint == *p {
+            if unsafe { 0 as libc::c_int as libc::c_uint == *p } {
                 break;
             }
-            p = p.offset(1);
-            p;
+            p = unsafe { p.offset(1) };
         }
-        tail_delete((*trie).tail, t);
-        (*trie).da.set_base(s, 0 as libc::c_int);
-        (*trie).da.prune(s);
-        (*trie).is_dirty = DA_TRUE;
+        unsafe {
+            tail_delete(self.tail, t);
+        }
+        self.da.set_base(s, 0 as libc::c_int);
+        self.da.prune(s);
+        self.is_dirty = DA_TRUE;
         return DA_TRUE;
     }
 
     pub unsafe fn enumerate(
-        mut trie: *const Trie,
-        mut enum_func: TrieEnumFunc,
-        mut user_data: *mut libc::c_void,
+        &self,
+        // mut trie: *const Trie,
+        enum_func: TrieEnumFunc,
+        user_data: *mut libc::c_void,
     ) -> Bool {
-        let mut root: *mut TrieState = 0 as *mut TrieState;
-        let mut iter: *mut TrieIterator = 0 as *mut TrieIterator;
+        // let mut root: *mut TrieState = 0 as *mut TrieState;
+        // let mut iter: *mut TrieIterator = 0 as *mut TrieIterator;
         let mut cont: Bool = DA_TRUE;
-        root = Trie::root(&*trie);
+        let root = self.root();
         if root.is_null() as libc::c_int as libc::c_long != 0 {
             return DA_FALSE;
         }
-        iter = TrieIterator::new(root);
+        let iter = TrieIterator::new(root);
         if iter.is_null() as libc::c_int as libc::c_long != 0 {
             TrieState::free(root);
             return DA_FALSE;
         } else {
             while cont as libc::c_uint != 0 && TrieIterator::next(iter) as libc::c_uint != 0 {
-                let mut key: *mut AlphaChar = TrieIterator::get_key(iter);
-                let mut data: TrieData = TrieIterator::get_data(iter);
+                let key: *mut AlphaChar = TrieIterator::get_key(iter);
+                let data: TrieData = TrieIterator::get_data(iter);
                 cont = (Some(enum_func.expect("non-null function pointer")))
                     .expect("non-null function pointer")(
                     key, data, user_data

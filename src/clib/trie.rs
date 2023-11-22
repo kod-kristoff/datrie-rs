@@ -112,7 +112,11 @@ pub unsafe extern "C" fn trie_retrieve(
     mut key: *const AlphaChar,
     mut o_data: *mut TrieData,
 ) -> Bool {
-    return Trie::retrieve(trie, key, o_data);
+    if trie.is_null() || key.is_null() {
+        return DA_FALSE;
+    }
+    let trie = unsafe { &*trie };
+    return trie.retrieve(key, o_data);
 }
 #[no_mangle]
 pub unsafe extern "C" fn trie_store(
@@ -120,7 +124,11 @@ pub unsafe extern "C" fn trie_store(
     mut key: *const AlphaChar,
     mut data: TrieData,
 ) -> Bool {
-    return Trie::store(trie, key, data);
+    if trie.is_null() || key.is_null() {
+        return DA_FALSE;
+    }
+    let trie = unsafe { &mut *trie };
+    return trie.store(key, data);
 }
 #[no_mangle]
 pub unsafe extern "C" fn trie_store_if_absent(
@@ -128,11 +136,19 @@ pub unsafe extern "C" fn trie_store_if_absent(
     mut key: *const AlphaChar,
     mut data: TrieData,
 ) -> Bool {
-    return Trie::store(trie, key, data);
+    if trie.is_null() || key.is_null() {
+        return DA_FALSE;
+    }
+    let trie = unsafe { &mut *trie };
+    return trie.store(key, data);
 }
 #[no_mangle]
-pub unsafe extern "C" fn trie_delete(mut trie: *mut Trie, mut key: *const AlphaChar) -> Bool {
-    return Trie::delete(trie, key);
+pub extern "C" fn trie_delete(mut trie: *mut Trie, mut key: *const AlphaChar) -> Bool {
+    if trie.is_null() || key.is_null() {
+        return DA_FALSE;
+    }
+    let trie = unsafe { &mut *trie };
+    return trie.delete(key);
 }
 #[no_mangle]
 pub unsafe extern "C" fn trie_enumerate(
@@ -140,7 +156,11 @@ pub unsafe extern "C" fn trie_enumerate(
     mut enum_func: TrieEnumFunc,
     mut user_data: *mut libc::c_void,
 ) -> Bool {
-    return Trie::enumerate(trie, enum_func, user_data);
+    if trie.is_null() {
+        return DA_FALSE;
+    }
+    let trie = unsafe { &*trie };
+    return trie.enumerate(enum_func, user_data);
 }
 #[no_mangle]
 pub unsafe extern "C" fn trie_root(mut trie: *const Trie) -> *mut TrieState {

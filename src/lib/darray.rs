@@ -620,7 +620,7 @@ impl DArray {
         return (self.extend_pool(s) as libc::c_uint != 0 && self.get_check(s) < 0 as libc::c_int)
             as libc::c_int as Bool;
     }
-    unsafe fn has_children(&self, mut s: TrieIndex) -> Bool {
+    fn has_children(&self, s: TrieIndex) -> Bool {
         let mut base: TrieIndex = 0;
         let mut c: TrieIndex = 0;
         let mut max_c: TrieIndex = 0;
@@ -794,34 +794,34 @@ impl DArray {
         return DA_TRUE;
     }
 
-    pub unsafe fn prune(&mut self, mut s: TrieIndex) {
+    pub fn prune(&mut self, s: TrieIndex) {
         self.prune_upto(self.get_root(), s);
     }
 
-    pub unsafe fn prune_upto(&mut self, mut p: TrieIndex, mut s: TrieIndex) {
+    pub fn prune_upto(&mut self, p: TrieIndex, mut s: TrieIndex) {
         while p != s && self.has_children(s) as u64 == 0 {
-            let mut parent: TrieIndex = 0;
-            parent = self.get_check(s);
+            // let mut parent: TrieIndex = 0;
+            let parent = self.get_check(s);
             self.free_cell(s);
             s = parent;
         }
     }
-    unsafe fn alloc_cell(&mut self, mut cell: TrieIndex) {
-        let mut prev: TrieIndex = 0;
-        let mut next: TrieIndex = 0;
-        prev = -self.get_base(cell);
-        next = -self.get_check(cell);
+    fn alloc_cell(&mut self, cell: TrieIndex) {
+        // let mut prev: TrieIndex = 0;
+        // let mut next: TrieIndex = 0;
+        let prev = -self.get_base(cell);
+        let next = -self.get_check(cell);
         self.set_check(prev, -next);
         self.set_base(next, -prev);
     }
-    unsafe fn free_cell(&mut self, cell: TrieIndex) {
-        let mut i: TrieIndex = 0;
-        let mut prev: TrieIndex = 0;
-        i = -self.get_check(1 as libc::c_int);
+    fn free_cell(&mut self, cell: TrieIndex) {
+        // let mut i: TrieIndex = 0;
+        // let mut prev: TrieIndex = 0;
+        let mut i = -self.get_check(1 as libc::c_int);
         while i != 1 as libc::c_int && i < cell {
             i = -self.get_check(i);
         }
-        prev = -self.get_base(i);
+        let prev = -self.get_base(i);
         self.set_check(cell, -i);
         self.set_base(cell, -prev);
         self.set_check(prev, -cell);
