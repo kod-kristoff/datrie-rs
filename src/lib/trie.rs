@@ -1,7 +1,7 @@
 use std::path::Path;
 use std::{fs, io};
 
-use crate::fileutils::ReadExt;
+use crate::fileutils::{CFile, ReadExt};
 use crate::{alpha_map::*, darray::*, tail::*};
 use crate::{trie_string::*, DatrieError, DatrieResult, ErrorKind};
 use ::libc;
@@ -32,7 +32,7 @@ pub type FILE = libc::FILE;
 pub struct Trie {
     pub alpha_map: Box<AlphaMap>,
     pub da: Box<DArray>,
-    pub tail: *mut Tail,
+    pub tail: Box<Tail>,
     pub is_dirty: Bool,
 }
 pub type TrieEnumFunc =
@@ -56,17 +56,18 @@ impl Trie {
     pub fn new(alpha_map: &AlphaMap) -> DatrieResult<Trie> {
         let alpha_map = Box::new(alpha_map.clone());
         let da = Box::new(DArray::new()?);
+        let tail = Box::new(Tail::new());
         // let da = unsafe { da_new() };
         // if da.is_null() {
         //     return Err(DatrieError::new(ErrorKind::Memory, "malloc failed".into()));
         // }
-        let tail = unsafe { tail_new() };
-        if tail.is_null() {
-            // unsafe {
-            //     da_free(da);
-            // }
-            return Err(DatrieError::new(ErrorKind::Memory, "malloc failed".into()));
-        }
+        // let tail = unsafe { tail_new() };
+        // if tail.is_null() {
+        //     // unsafe {
+        //     //     da_free(da);
+        //     // }
+        //     return Err(DatrieError::new(ErrorKind::Memory, "malloc failed".into()));
+        // }
         Ok(Trie {
             alpha_map,
             da,
@@ -105,11 +106,13 @@ impl Trie {
         // if da.is_null() {
         //     return Err(DatrieError::new(ErrorKind::Memory, "malloc failed".into()));
         // }
-        let tail = tail_fread(file);
-        if tail.is_null() {
-            // da_free(da);
-            return Err(DatrieError::new(ErrorKind::Memory, "malloc failed".into()));
-        }
+        let mut cfile = CFile::new(file);
+        let tail = Box::new(Tail::fread_safe(&mut cfile)?);
+        // let tail = tail_fread(file);
+        // if tail.is_null() {
+        //     // da_free(da);
+        //     return Err(DatrieError::new(ErrorKind::Memory, "malloc failed".into()));
+        // }
 
         return Ok(Trie {
             alpha_map,
@@ -121,7 +124,7 @@ impl Trie {
     pub fn fread_safe<R: ReadExt + io::Seek>(reader: &mut R) -> DatrieResult<Trie> {
         let alpha_map = Box::new(AlphaMap::fread_bin_safe(reader)?);
         let da = Box::new(DArray::fread_safe(reader)?);
-        let tail = Tail::fread_safe(reader)?;
+        let tail = Box::new(Tail::fread_safe(reader)?);
         Ok(Trie {
             alpha_map,
             da,
@@ -136,16 +139,16 @@ impl Trie {
 //     tail_free((*trie).tail);
 //     free(trie as *mut libc::c_void);
 // }
-impl Drop for Trie {
-    fn drop(&mut self) {
-        unsafe {
-            // drop((*trie).alpha_map.as_mut());
-            // da_free((*self).da);
-            tail_free((*self).tail);
-            // free(trie as *mut libc::c_void);
-        }
-    }
-}
+// impl Drop for Trie {
+//     fn drop(&mut self) {
+//         unsafe {
+//             // drop((*trie).alpha_map.as_mut());
+//             // da_free((*self).da);
+//             tail_free((*self).tail);
+//             // free(trie as *mut libc::c_void);
+//         }
+//     }
+// }
 impl Trie {
     pub unsafe fn save(trie: *mut Trie, path: *const libc::c_char) -> libc::c_int {
         let file: *mut FILE = fopen(path, b"wb+\0" as *const u8 as *const libc::c_char);
@@ -167,33 +170,27 @@ impl Trie {
     //         .wrapping_add(tail_get_serialized_size((*trie).tail));
     // }
     pub fn get_serialized_size(&self) -> usize {
-        let da: &DArray = unsafe { &*self.da };
-        let tail: &Tail = unsafe { &*self.tail };
-        return self
-            .alpha_map
-            .get_serialized_size()
-            .wrapping_add(da.get_serialized_size())
-            .wrapping_add(tail.get_serialized_size());
+        return self.alpha_map.get_serialized_size()
+            + self.da.get_serialized_size()
+            + self.tail.get_serialized_size();
     }
     pub unsafe fn serialize(trie: *mut Trie, ptr: *mut uint8) {
         let mut ptr1: *mut uint8 = ptr;
         alpha_map_serialize_bin((*trie).alpha_map.as_ref(), &mut ptr1);
         da_serialize((*trie).da.as_ref(), &mut ptr1);
-        tail_serialize((*trie).tail, &mut ptr1);
+        tail_serialize((*trie).tail.as_ref(), &mut ptr1);
         (*trie).is_dirty = DA_FALSE;
     }
     pub fn serialize_safe(&mut self, mut writer: impl std::io::Write) -> DatrieResult<()> {
-        let self_tail = unsafe { &*self.tail };
         self.alpha_map.serialize(&mut writer)?;
         self.da.serialize(&mut writer)?;
-        self_tail.serialize(&mut writer)?;
+        self.tail.serialize(&mut writer)?;
         Ok(())
     }
     pub fn serialize_to_slice(&mut self, buf: &mut [u8]) -> DatrieResult<usize> {
-        let self_tail = unsafe { &*self.tail };
         let mut start = self.alpha_map.serialize_to_slice(buf)?;
         start += self.da.serialize_to_slice(&mut buf[start..])?;
-        start += self_tail.serialize_to_slice(&mut buf[start..])?;
+        start += self.tail.serialize_to_slice(&mut buf[start..])?;
         Ok(start)
     }
     pub unsafe fn fwrite(trie: *mut Trie, file: *mut FILE) -> libc::c_int {
@@ -203,7 +200,7 @@ impl Trie {
         if da_fwrite((*trie).da.as_ref(), file) != 0 as libc::c_int {
             return -(1 as libc::c_int);
         }
-        if tail_fwrite((*trie).tail, file) != 0 as libc::c_int {
+        if tail_fwrite((*trie).tail.as_ref(), file) != 0 as libc::c_int {
             return -(1 as libc::c_int);
         }
         (*trie).is_dirty = DA_FALSE;
@@ -243,7 +240,8 @@ impl Trie {
             if 0x7fffffff as libc::c_int == tc_0 {
                 return DA_FALSE;
             }
-            if unsafe { tail_walk_char(self.tail, s, &mut suffix_idx, tc_0 as TrieChar) } as u64
+            if unsafe { tail_walk_char(self.tail.as_ref(), s, &mut suffix_idx, tc_0 as TrieChar) }
+                as u64
                 == 0
             {
                 return DA_FALSE;
@@ -258,7 +256,7 @@ impl Trie {
         }
         if !o_data.is_null() {
             unsafe {
-                *o_data = tail_get_data(self.tail, s);
+                *o_data = tail_get_data(self.tail.as_ref(), s);
             }
         }
         return DA_TRUE;
@@ -317,7 +315,8 @@ impl Trie {
             if 0x7fffffff as libc::c_int == tc_0 {
                 return DA_FALSE;
             }
-            if tail_walk_char(self.tail, t, &mut suffix_idx, tc_0 as TrieChar) as u64 == 0 {
+            if tail_walk_char(self.tail.as_ref(), t, &mut suffix_idx, tc_0 as TrieChar) as u64 == 0
+            {
                 // let mut tail_str: *mut TrieChar = 0 as *mut TrieChar;
                 // let mut res_0: Bool = DA_FALSE;
                 let tail_str = alpha_map_char_to_trie_str(self.alpha_map.as_ref(), sep);
@@ -336,7 +335,7 @@ impl Trie {
         if is_overwrite as u64 == 0 {
             return DA_FALSE;
         }
-        tail_set_data(self.tail, t, data);
+        tail_set_data(self.tail.as_mut(), t, data);
         self.is_dirty = DA_TRUE;
         return DA_TRUE;
     }
@@ -357,8 +356,8 @@ impl Trie {
         if '\0' as i32 != *suffix as libc::c_int {
             suffix = suffix.offset(1);
         }
-        let new_tail = tail_add_suffix(self.tail, suffix);
-        tail_set_data(self.tail, new_tail, data);
+        let new_tail = tail_add_suffix(self.tail.as_mut(), suffix);
+        tail_set_data(self.tail.as_mut(), new_tail, data);
         self.da.set_base(new_da, -new_tail);
         self.is_dirty = DA_TRUE;
         return DA_TRUE;
@@ -377,7 +376,7 @@ impl Trie {
         // let mut old_suffix: *const TrieChar = 0 as *const TrieChar;
         // let mut p: *const TrieChar = 0 as *const TrieChar;
         let old_tail = -(*self.da).get_base(sep_node);
-        let old_suffix = tail_get_suffix(self.tail, old_tail);
+        let old_suffix = tail_get_suffix(self.tail.as_ref(), old_tail);
         if old_suffix.is_null() {
             return DA_FALSE;
         }
@@ -404,7 +403,7 @@ impl Trie {
                     if '\0' as i32 != *p as libc::c_int {
                         p = p.offset(1);
                     }
-                    tail_set_suffix(self.tail, old_tail, p);
+                    tail_set_suffix(self.tail.as_mut(), old_tail, p);
                     self.da.set_base(old_da, -old_tail);
                     return self.branch_in_branch(s, suffix, data);
                 }
@@ -447,7 +446,7 @@ impl Trie {
                 return DA_FALSE;
             }
             if unsafe {
-                tail_walk_char(self.tail, t, &mut suffix_idx, tc_0 as TrieChar) as u64 == 0
+                tail_walk_char(self.tail.as_ref(), t, &mut suffix_idx, tc_0 as TrieChar) as u64 == 0
             } {
                 return DA_FALSE;
             }
@@ -457,7 +456,7 @@ impl Trie {
             p = unsafe { p.offset(1) };
         }
         unsafe {
-            tail_delete(self.tail, t);
+            tail_delete(self.tail.as_mut(), t);
         }
         self.da.set_base(s, 0 as libc::c_int);
         self.da.prune(s);
@@ -560,7 +559,7 @@ impl TrieState {
             return ret;
         } else {
             return tail_walk_char(
-                (*(*s).trie).tail,
+                (*(*s).trie).tail.as_ref(),
                 (*s).index,
                 &mut (*s).suffix_idx,
                 tc as TrieChar,
@@ -578,7 +577,7 @@ impl TrieState {
                 .get_check((*(*(*s).trie).da).get_base((*s).index) + tc as TrieChar as libc::c_int)
                 == (*s).index) as libc::c_int as Bool;
         } else {
-            return (*(tail_get_suffix((*(*s).trie).tail, (*s).index))
+            return (*(tail_get_suffix((*(*s).trie).tail.as_ref(), (*s).index))
                 .offset((*s).suffix_idx as isize) as libc::c_int
                 == tc as TrieChar as libc::c_int) as libc::c_int as Bool;
         };
@@ -607,7 +606,7 @@ impl TrieState {
             }
             // symbols_free(syms);
         } else {
-            let suffix: *const TrieChar = tail_get_suffix((*(*s).trie).tail, (*s).index);
+            let suffix: *const TrieChar = tail_get_suffix((*(*s).trie).tail.as_ref(), (*s).index);
             *chars.offset(0 as libc::c_int as isize) = alpha_map_trie_to_char(
                 (*(*s).trie).alpha_map.as_ref(),
                 *suffix.offset((*s).suffix_idx as isize),
@@ -630,14 +629,14 @@ impl TrieState {
             if (*(*s).trie).da.walk(&mut index, '\0' as i32 as TrieChar) as u64 != 0 {
                 if (*(*(*s).trie).da).get_base(index) < 0 as libc::c_int {
                     index = -(*(*(*s).trie).da).get_base(index);
-                    return tail_get_data((*(*s).trie).tail, index);
+                    return tail_get_data((*(*s).trie).tail.as_ref(), index);
                 }
             }
-        } else if *(tail_get_suffix((*(*s).trie).tail, (*s).index)).offset((*s).suffix_idx as isize)
-            as libc::c_int
+        } else if *(tail_get_suffix((*(*s).trie).tail.as_ref(), (*s).index))
+            .offset((*s).suffix_idx as isize) as libc::c_int
             == '\0' as i32
         {
-            return tail_get_data((*(*s).trie).tail, (*s).index);
+            return tail_get_data((*(*s).trie).tail.as_ref(), (*s).index);
         }
         return -(1 as libc::c_int);
     }
@@ -709,7 +708,7 @@ impl TrieIterator {
             return 0 as *mut AlphaChar;
         }
         if (*s).is_suffix != 0 {
-            tail_str = tail_get_suffix((*(*s).trie).tail, (*s).index);
+            tail_str = tail_get_suffix((*(*s).trie).tail.as_ref(), (*s).index);
             if tail_str.is_null() {
                 return 0 as *mut AlphaChar;
             }
@@ -726,7 +725,7 @@ impl TrieIterator {
             let mut key_len: libc::c_int = 0;
             let mut key_p: *const TrieChar = 0 as *const TrieChar;
             tail_idx = -(*(*(*s).trie).da).get_base((*s).index);
-            tail_str = tail_get_suffix((*(*s).trie).tail, tail_idx);
+            tail_str = tail_get_suffix((*(*s).trie).tail.as_ref(), tail_idx);
             if tail_str.is_null() {
                 return 0 as *mut AlphaChar;
             }
@@ -763,7 +762,7 @@ impl TrieIterator {
 
     pub unsafe fn get_data(iter: *const TrieIterator) -> TrieData {
         let s: *const TrieState = (*iter).state;
-        let mut tail_index: TrieIndex = 0;
+        let tail_index: TrieIndex;
         if s.is_null() {
             return -(1 as libc::c_int);
         }
@@ -775,7 +774,7 @@ impl TrieIterator {
         } else {
             tail_index = (*s).index;
         }
-        return tail_get_data((*(*s).trie).tail, tail_index);
+        return tail_get_data((*(*s).trie).tail.as_ref(), tail_index);
     }
 }
 #[cfg(test)]

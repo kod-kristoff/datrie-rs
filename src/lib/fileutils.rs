@@ -88,6 +88,22 @@ impl CFile {
         CFile { file }
     }
 }
+impl io::Seek for CFile {
+    fn seek(&mut self, pos: io::SeekFrom) -> io::Result<u64> {
+        let (offset, whence) = match pos {
+            io::SeekFrom::Start(offset) => (offset as i64, libc::SEEK_SET),
+            io::SeekFrom::Current(offset) => (offset as i64, libc::SEEK_CUR),
+            io::SeekFrom::End(offset) => (offset as i64, libc::SEEK_END),
+            _ => todo!(),
+        };
+        let res = unsafe { libc::fseek(self.file, offset, whence) };
+        if res != 0 {
+            todo!()
+        }
+        let new_pos = unsafe { libc::ftell(self.file) };
+        Ok(new_pos as u64)
+    }
+}
 // impl io::Seek for FileDescriptor {
 //     fn seek(&mut self, pos: io::SeekFrom) -> io::Result<u64> {
 
