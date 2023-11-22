@@ -11,6 +11,7 @@ path = "lib.rs"
 [dependencies]
 byteorder = "1.5.0"
 libc = "0.2.149"
+memchr = "2.6.4"
 
 [dev-dependencies]
 rand = "0.8.5"

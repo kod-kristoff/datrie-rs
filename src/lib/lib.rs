@@ -5,6 +5,7 @@ mod error;
 pub mod fileutils;
 pub mod tail;
 pub mod trie;
+pub mod trie_c_string;
 pub mod trie_string;
 
 pub use crate::error::{DatrieError, ErrorKind};
