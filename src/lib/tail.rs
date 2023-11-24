@@ -7,6 +7,7 @@ use libc::c_void;
 
 use crate::{
     fileutils::ReadExt,
+    trie_char_string::TrieCharString,
     trie_string::{trie_char_strdup, trie_char_strlen, trie_char_strsize},
     DatrieError, DatrieResult,
 };
@@ -61,7 +62,7 @@ pub struct TailBlock {
 pub struct TailBlock2 {
     pub next_free: TrieIndex,
     pub data: TrieData,
-    pub suffix: Vec<TrieChar>,
+    pub suffix: TrieCharString,
 }
 
 impl Default for TailBlock2 {
@@ -69,7 +70,7 @@ impl Default for TailBlock2 {
         TailBlock2 {
             next_free: -1,
             data: -1,
-            suffix: Vec::default(),
+            suffix: Default::default(),
         }
     }
 }
@@ -225,11 +226,11 @@ impl Tail {
                         malloc((length as libc::c_int + 1 as libc::c_int) as libc::c_ulong)
                             as *mut TrieChar;
                 }
-                let mut tail_block2 = TailBlock2 {
-                    next_free,
-                    data,
-                    suffix: vec![0; length as usize + 1],
-                };
+                // let mut tail_block2 = TailBlock2 {
+                //     next_free,
+                //     data,
+                let mut suffix_data = vec![0; length as usize];
+                // };
                 if unsafe {
                     (*tails.offset(i as isize)).suffix.is_null() // as libc::c_int as libc::c_long != 0
                 } {
@@ -238,14 +239,14 @@ impl Tail {
                     break;
                 }
                 if length as libc::c_int > 0 as libc::c_int {
-                    if unsafe {
-                        reader
-                            .read_chars(
-                                (*tails.offset(i as isize)).suffix as *mut libc::c_char,
-                                length as libc::c_int,
-                            )
-                            .is_err()
-                    } {
+                    if reader
+                        .read_exact(&mut suffix_data)
+                        // .read_chars(
+                        //     (*tails.offset(i as isize)).suffix as *mut libc::c_char,
+                        //     length as libc::c_int,
+                        // )
+                        .is_err()
+                    {
                         unsafe {
                             free((*tails.offset(i as isize)).suffix as *mut libc::c_void);
                         }
@@ -253,18 +254,27 @@ impl Tail {
                         break;
                     }
                     unsafe {
-                        for j in 0..length {
-                            tail_block2.suffix[j as usize] =
-                                *(*tails.offset(i as isize)).suffix.offset(j as isize);
-                        }
+                        memcpy(
+                            (*tails.offset(i as isize)).suffix as *mut libc::c_void,
+                            suffix_data.as_ptr() as *const libc::c_void,
+                            length as libc::c_ulong,
+                        );
+                        // for j in 0..length {
+                        //     tail_block2.suffix[j as usize] =
+                        //         *(*tails.offset(i as isize)).suffix.offset(j as isize);
+                        // }
                     }
                 }
                 unsafe {
                     *((*tails.offset(i as isize)).suffix).offset(length as isize) =
                         '\0' as i32 as TrieChar;
                 }
-                tail_block2.suffix[length as usize] = '\0' as TrieChar;
-                tails2.push(tail_block2);
+                // tail_block2.suffix[length as usize] = '\0' as TrieChar;
+                tails2.push(TailBlock2 {
+                    next_free,
+                    data,
+                    suffix: TrieCharString::new(suffix_data).unwrap(),
+                });
                 i += 1;
             }
             match current_block {
@@ -646,17 +656,10 @@ impl Tail {
             }
             let ref mut fresh1 = (*(self.tails).offset(index as isize)).suffix;
             *fresh1 = tmp;
-            self.tails2[index as usize].suffix.clear();
-            let mut p = tmp;
-            loop {
-                if p.is_null() {
-                    return DA_FALSE;
-                }
-                self.tails2[index as usize].suffix.push(*p);
-                if *p == '\0' as TrieChar {
-                    break;
-                }
-                p = p.offset(1);
+            if !suffix.is_null() {
+                self.tails2[index as usize].suffix.replace_from_ptr(suffix);
+            } else {
+                self.tails2[index as usize].suffix.clear();
             }
             return DA_TRUE;
         }
