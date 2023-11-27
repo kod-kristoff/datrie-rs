@@ -166,7 +166,7 @@ impl<T: io::Read> ReadExt for T {
         Ok(())
     }
     unsafe fn read_chars(&mut self, buf: *mut libc::c_char, len: libc::c_int) -> io::Result<()> {
-        let slice = std::slice::from_raw_parts_mut(buf, len as usize);
+        let slice = std::slice::from_raw_parts_mut(buf as *mut u8, len as usize);
         self.read_exact(slice)
     }
     fn read_chars_into(&mut self, buf: &mut [u8]) -> io::Result<()> {
