@@ -309,122 +309,7 @@ impl Tail {
         ));
     }
 }
-#[no_mangle]
-pub unsafe extern "C" fn tail_fread(file: *mut FILE) -> *mut Tail {
-    let mut current_block: u64;
-    let mut save_pos: libc::c_long = 0;
-    let mut t: *mut Tail = 0 as *mut Tail;
-    let mut i: TrieIndex = 0;
-    let mut sig: uint32 = 0;
-    save_pos = ftell(file);
-    if !(file_read_int32(file, &mut sig as *mut uint32 as *mut int32) as u64 == 0
-        || 0xdffcdffc as libc::c_uint != sig)
-    {
-        t = malloc(::core::mem::size_of::<Tail>() as libc::c_ulong) as *mut Tail;
-        if !(t.is_null() as libc::c_int as libc::c_long != 0) {
-            if !(file_read_int32(file, &mut (*t).first_free) as u64 == 0
-                || file_read_int32(file, &mut (*t).num_tails) as u64 == 0)
-            {
-                if !((*t).num_tails as libc::c_ulong
-                    > (18446744073709551615 as libc::c_ulong)
-                        .wrapping_div(::core::mem::size_of::<TailBlock>() as libc::c_ulong))
-                {
-                    (*t).tails = malloc(
-                        ((*t).num_tails as libc::c_ulong)
-                            .wrapping_mul(::core::mem::size_of::<TailBlock>() as libc::c_ulong),
-                    ) as *mut TailBlock;
-                    if !(((*t).tails).is_null() as libc::c_int as libc::c_long != 0) {
-                        i = 0 as libc::c_int;
-                        loop {
-                            if !(i < (*t).num_tails) {
-                                current_block = 15904375183555213903;
-                                break;
-                            }
-                            let mut length: int16 = 0;
-                            if file_read_int32(
-                                file,
-                                &mut (*((*t).tails).offset(i as isize)).next_free,
-                            ) as u64
-                                == 0
-                                || file_read_int32(
-                                    file,
-                                    &mut (*((*t).tails).offset(i as isize)).data,
-                                ) as u64
-                                    == 0
-                                || file_read_int16(file, &mut length) as u64 == 0
-                            {
-                                current_block = 1386273818809128762;
-                                break;
-                            }
-                            let ref mut fresh0 = (*((*t).tails).offset(i as isize)).suffix;
-                            *fresh0 =
-                                malloc((length as libc::c_int + 1 as libc::c_int) as libc::c_ulong)
-                                    as *mut TrieChar;
-                            if ((*((*t).tails).offset(i as isize)).suffix).is_null() as libc::c_int
-                                as libc::c_long
-                                != 0
-                            {
-                                current_block = 1386273818809128762;
-                                break;
-                            }
-                            if length as libc::c_int > 0 as libc::c_int {
-                                if file_read_chars(
-                                    file,
-                                    (*((*t).tails).offset(i as isize)).suffix as *mut libc::c_char,
-                                    length as libc::c_int,
-                                ) as u64
-                                    == 0
-                                {
-                                    free(
-                                        (*((*t).tails).offset(i as isize)).suffix
-                                            as *mut libc::c_void,
-                                    );
-                                    current_block = 1386273818809128762;
-                                    break;
-                                }
-                            }
-                            *((*((*t).tails).offset(i as isize)).suffix).offset(length as isize) =
-                                '\0' as i32 as TrieChar;
-                            i += 1;
-                            i;
-                        }
-                        match current_block {
-                            15904375183555213903 => return t,
-                            _ => {
-                                while i > 0 as libc::c_int {
-                                    i -= 1;
-                                    free(
-                                        (*((*t).tails).offset(i as isize)).suffix
-                                            as *mut libc::c_void,
-                                    );
-                                }
-                                free((*t).tails as *mut libc::c_void);
-                            }
-                        }
-                    }
-                }
-            }
-            free(t as *mut libc::c_void);
-        }
-    }
-    fseek(file, save_pos, 0 as libc::c_int);
-    return 0 as *mut Tail;
-}
-// #[no_mangle]
-// pub unsafe extern "C" fn tail_free(mut t: *mut Tail) {
-//     let mut i: TrieIndex = 0;
-//     if !((*t).tails).is_null() {
-//         i = 0 as libc::c_int;
-//         while i < (*t).num_tails {
-//             if !((*((*t).tails).offset(i as isize)).suffix).is_null() {
-//                 free((*((*t).tails).offset(i as isize)).suffix as *mut libc::c_void);
-//             }
-//             i += 1;
-//         }
-//         free((*t).tails as *mut libc::c_void);
-//     }
-//     free(t as *mut libc::c_void);
-// }
+
 #[no_mangle]
 pub unsafe extern "C" fn tail_fwrite(mut t: *const Tail, mut file: *mut FILE) -> libc::c_int {
     let mut i: TrieIndex = 0;
@@ -516,7 +401,7 @@ impl Tail {
 
     const SIGNATURE: u32 = 0xdffcdffc;
     pub fn serialize(&self, writer: &mut dyn std::io::Write) -> DatrieResult<()> {
-        writer.write_i32::<BigEndian>(Self::SIGNATURE as i32)?;
+        writer.write_u32::<BigEndian>(Self::SIGNATURE)?;
         writer.write_i32::<BigEndian>(self.first_free)?;
         writer.write_i32::<BigEndian>(self.num_tails)?;
         for i in 0..self.num_tails {
