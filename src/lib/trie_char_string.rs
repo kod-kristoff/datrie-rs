@@ -57,6 +57,13 @@ impl TrieCharString {
         self.inner.as_ptr()
     }
 
+    #[inline]
+    #[must_use]
+    pub fn as_bytes(&self) -> &[TrieChar] {
+        // SAFETY: CString has a length at least 1
+        unsafe { self.inner.get_unchecked(..self.inner.len() - 1) }
+    }
+
     pub fn len(&self) -> usize {
         self.inner.len() - 1
     }
