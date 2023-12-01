@@ -1,3 +1,7 @@
+mod trie_str;
+
+pub use trie_str::TrieChar; //, TrieString};
+
 use std::path::Path;
 use std::{fs, io};
 
@@ -22,7 +26,6 @@ pub type uint8 = libc::c_uchar;
 pub type uint32 = libc::c_uint;
 pub type int32 = libc::c_int;
 pub type AlphaChar = uint32;
-pub type TrieChar = libc::c_uchar;
 pub type TrieIndex = int32;
 pub type TrieData = int32;
 pub type FILE = libc::FILE;

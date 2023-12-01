@@ -1,28 +1,30 @@
-use crate::trie::TrieChar;
+use core::slice;
+
+pub type TrieChar = u8;
 
 #[derive(Debug, Clone)]
-pub struct TrieCharString {
+pub struct TrieString {
     inner: Vec<TrieChar>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NulError(usize, Vec<TrieChar>);
 
-impl TrieCharString {
+impl TrieString {
     pub fn clear(&mut self) {
         self.inner.clear();
         self.inner.push(0);
     }
-    pub fn new<T: Into<Vec<TrieChar>>>(t: T) -> Result<TrieCharString, NulError> {
+    pub fn new<T: Into<Vec<TrieChar>>>(t: T) -> Result<TrieString, NulError> {
         let bytes = t.into();
 
         match memchr::memchr(0, &bytes) {
             Some(i) => Err(NulError(i, bytes)),
-            None => Ok(TrieCharString::_from_vec_unchecked(bytes)),
+            None => Ok(Self::_from_vec_unchecked(bytes)),
         }
     }
 
-    fn _from_vec_unchecked(mut v: Vec<TrieChar>) -> TrieCharString {
+    fn _from_vec_unchecked(mut v: Vec<TrieChar>) -> TrieString {
         v.reserve_exact(1);
         v.push(0);
         Self { inner: v }
@@ -69,14 +71,46 @@ impl TrieCharString {
     }
 }
 
-impl Default for TrieCharString {
+impl Default for TrieString {
     fn default() -> Self {
         Self { inner: vec![0; 1] }
     }
 }
 
-// impl From<Vec<u8>> for TrieCharString {
+// impl From<Vec<u8>> for TrieString {
 //     fn from(value: Vec<u8>) -> Self {
 //         Self { inner: value }
 //     }
+// }
+// #[repr(C)]
+// pub struct TrieStr {
+//     inner: [TrieChar],
+// }
+
+// impl TrieStr {
+//     pub unsafe fn from_ptr<'a>(ptr: *const TrieChar) -> &'a TrieStr {
+//         let len = unsafe { gen_strlen(ptr) };
+
+//         unsafe { Self::from_slice_with_nul_unchecked(slice::from_raw_parts(ptr, len)) }
+//     }
+
+//     pub unsafe fn from_slice_with_nul_unchecked(t: &[TrieChar]) -> &TrieStr {
+//         debug_assert!(!t.is_empty() && t[t.len() - 1] == 0);
+
+//         unsafe { &*(t as *const TrieChar as *const TrieStr) }
+//     }
+// }
+
+// unsafe fn gen_strlen(s: *const TrieChar) -> usize {
+//     debug_assert!(!s.is_null());
+//     let mut p = s;
+//     let mut len = 0;
+//     loop {
+//         p = p.offset(1);
+//         if *p == 0 {
+//             break;
+//         }
+//         len += 1;
+//     }
+//     len
 // }
