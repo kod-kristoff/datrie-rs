@@ -490,17 +490,15 @@ impl DArray {
             self.cells2[s].check = val;
         }
     }
-    pub fn walk(
+    pub unsafe fn walk(
         &self,
         // mut d: *const DArray,
         s: *mut TrieIndex,
         c: TrieChar,
     ) -> Bool {
-        let next: TrieIndex = unsafe { self.get_base(*s) } + c as libc::c_int;
-        if unsafe { self.get_check(next) == *s } {
-            unsafe {
-                *s = next;
-            }
+        let next: TrieIndex = self.get_base(*s) + c as libc::c_int;
+        if self.get_check(next) == *s {
+            *s = next;
             return DA_TRUE;
         }
         return DA_FALSE;

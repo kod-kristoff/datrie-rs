@@ -3,19 +3,19 @@ use core::slice;
 pub type TrieChar = u8;
 
 #[derive(Debug, Clone)]
-pub struct TrieString {
+pub struct TrieCharString {
     inner: Vec<TrieChar>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NulError(usize, Vec<TrieChar>);
 
-impl TrieString {
+impl TrieCharString {
     pub fn clear(&mut self) {
         self.inner.clear();
         self.inner.push(0);
     }
-    pub fn new<T: Into<Vec<TrieChar>>>(t: T) -> Result<TrieString, NulError> {
+    pub fn new<T: Into<Vec<TrieChar>>>(t: T) -> Result<TrieCharString, NulError> {
         let bytes = t.into();
 
         match memchr::memchr(0, &bytes) {
@@ -24,7 +24,7 @@ impl TrieString {
         }
     }
 
-    fn _from_vec_unchecked(mut v: Vec<TrieChar>) -> TrieString {
+    fn _from_vec_unchecked(mut v: Vec<TrieChar>) -> TrieCharString {
         v.reserve_exact(1);
         v.push(0);
         Self { inner: v }
@@ -71,7 +71,7 @@ impl TrieString {
     }
 }
 
-impl Default for TrieString {
+impl Default for TrieCharString {
     fn default() -> Self {
         Self { inner: vec![0; 1] }
     }

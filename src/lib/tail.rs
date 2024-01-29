@@ -6,7 +6,9 @@ use core::mem::size_of;
 use libc::c_void;
 
 use crate::{
-    fileutils::ReadExt, trie_char_string::TrieCharString, trie_string::trie_char_strdup,
+    fileutils::ReadExt,
+    trie::TrieCharString,
+    trie_string::{trie_char_strdup, TrieString},
     DatrieError, DatrieResult,
 };
 
@@ -119,11 +121,11 @@ impl Tail {
                 break;
             }
             let mut suffix_data = vec![0; length as usize];
-            if length as libc::c_int > 0 as libc::c_int {
-                if reader.read_exact(&mut suffix_data).is_err() {
-                    current_block = 1386273818809128762;
-                    break;
-                }
+            if length as libc::c_int > 0 as libc::c_int
+                && reader.read_exact(&mut suffix_data).is_err()
+            {
+                current_block = 1386273818809128762;
+                break;
             }
             tails2.push(TailBlock {
                 next_free,
@@ -132,16 +134,13 @@ impl Tail {
             });
             i += 1;
         }
-        match current_block {
-            15904375183555213903 => {
-                return Ok(Tail { first_free, tails2 });
-            }
-            _ => {}
+        if let 15904375183555213903 = current_block {
+            return Ok(Tail { first_free, tails2 });
         }
-        return Err(DatrieError::new(
+        Err(DatrieError::new(
             crate::ErrorKind::Bug,
             "failed to read tail".into(),
-        ));
+        ))
     }
 }
 

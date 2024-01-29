@@ -1,6 +1,6 @@
 mod trie_str;
 
-pub use trie_str::TrieChar; //, TrieString};
+pub use trie_str::{TrieChar, TrieCharString}; //, TrieString};
 
 use std::path::Path;
 use std::{fs, io};
@@ -212,7 +212,7 @@ impl Trie {
     pub fn is_dirty(&self) -> Bool {
         return self.is_dirty;
     }
-    pub fn retrieve(&self, key: *const AlphaChar, o_data: *mut TrieData) -> Bool {
+    pub unsafe fn retrieve(&self, key: *const AlphaChar, o_data: *mut TrieData) -> Bool {
         // let mut s: TrieIndex = 0;
         // let mut suffix_idx: libc::c_short = 0;
         // let mut p: *const AlphaChar = 0 as *const AlphaChar;
@@ -428,7 +428,7 @@ impl Trie {
             if 0x7fffffff as libc::c_int == tc {
                 return DA_FALSE;
             }
-            if self.da.walk(&mut s, tc as TrieChar) as u64 == 0 {
+            if unsafe { self.da.walk(&mut s, tc as TrieChar) } as u64 == 0 {
                 return DA_FALSE;
             }
             if unsafe { 0 as libc::c_int as libc::c_uint == *p } {

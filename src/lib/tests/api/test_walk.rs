@@ -129,25 +129,25 @@ unsafe fn is_walkables_include(
     mut n_elm: usize,
 ) -> bool {
     let mut p = walkables;
-    while (n_elm > 0) {
-        n_elm = n_elm - 1;
-        if (*p == c) {
+    while n_elm > 0 {
+        n_elm -= 1;
+        if *p == c {
             return true;
         }
         p = p.offset(1);
     }
-    return false;
+    false
 }
 
 // static void
-unsafe fn print_walkables(walkables: *const AlphaChar, mut n_elm: usize) {
+unsafe fn print_walkables(walkables: *const AlphaChar, n_elm: usize) {
     // int i;
     let mut p = walkables;
 
     print!("{{");
     // for (i = 0; i < n_elm; i++) {
     for i in 0..n_elm {
-        if (i > 0) {
+        if i > 0 {
             print!(", ");
         }
         print!("'{}'", *p);
@@ -185,7 +185,7 @@ fn test_walk() -> DatrieResult<()> {
         //     }
 
         /* store */
-        let walk_dict = WALK_DICT.clone();
+        let walk_dict = WALK_DICT;
         for dict_p in &walk_dict {
             //     for (dict_p = walk_dict; dict_p->key; dict_p++) {
             assert_eq!(
@@ -201,20 +201,20 @@ fn test_walk() -> DatrieResult<()> {
 
         println!("Now the trie structure is supposed to be:\n");
         //     print! (
-        print!("          +---o-> (3) -o-> (4) -l-> [5]\n");
-        print!("          |\n");
-        print!("          |        +---i-> (7) -z-> (8) -e-> [9]\n");
-        print!("          |        |\n");
-        print!("(1) -p-> (2) -r-> (6) -e-> (10) -v-> (11) -i-> (12) -e-> (13) -w-> [14]\n");
-        print!("                   |         |\n");
-        print!("                   |         +---p-> (15) -a-> (16) -r-> (17) -e-> [18]\n");
-        print!("                   |\n");
-        print!("                   +---o-> (19) -d-> (20) -u-> (21) -c-> (22) -e-> [23]\n");
-        print!("                             |\n");
-        print!(
-            "                             +---g-> (24) -r-> (25) -e-> (26) -s-> (27) -s-> [28]\n"
+        println!("          +---o-> (3) -o-> (4) -l-> [5]");
+        println!("          |");
+        println!("          |        +---i-> (7) -z-> (8) -e-> [9]");
+        println!("          |        |");
+        println!("(1) -p-> (2) -r-> (6) -e-> (10) -v-> (11) -i-> (12) -e-> (13) -w-> [14]");
+        println!("                   |         |");
+        println!("                   |         +---p-> (15) -a-> (16) -r-> (17) -e-> [18]");
+        println!("                   |");
+        println!("                   +---o-> (19) -d-> (20) -u-> (21) -c-> (22) -e-> [23]");
+        println!("                             |");
+        println!(
+            "                             +---g-> (24) -r-> (25) -e-> (26) -s-> (27) -s-> [28]"
         );
-        print!("\n");
+        println!();
         //     );
 
         /* walk */
@@ -249,17 +249,17 @@ fn test_walk() -> DatrieResult<()> {
         //         is_failed = TRUE;
         //     }
         if (!is_walkables_include('o' as AlphaChar, walkables.as_ptr(), n as usize)) {
-            print!("Walkable chars do not include 'o'\n");
+            println!("Walkable chars do not include 'o'");
             is_failed = true;
         }
         if (!is_walkables_include('r' as AlphaChar, walkables.as_ptr(), n as usize)) {
-            print!("Walkable chars do not include 'r'\n");
+            println!("Walkable chars do not include 'r'");
             is_failed = true;
         }
         if (is_failed) {
             print!("Walkables = ");
             print_walkables(walkables.as_ptr(), n as usize);
-            print!("\n");
+            println!();
             panic!("walkables failed");
             //         goto err_TrieState::s_created;
         }

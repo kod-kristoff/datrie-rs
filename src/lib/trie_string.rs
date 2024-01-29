@@ -16,23 +16,24 @@ pub type size_t = libc::c_ulong;
 pub struct TrieString {
     pub ds: DString,
 }
+/// # Safety
+/// Caller must guarantee that `s` is a valid pointer
 #[no_mangle]
-pub extern "C" fn trie_char_strlen(mut str: *const TrieChar) -> size_t {
+pub unsafe extern "C" fn trie_char_strlen(mut s: *const TrieChar) -> size_t {
     let mut len: size_t = 0 as libc::c_int as size_t;
     loop {
-        let fresh0 = str;
-        str = unsafe { str.offset(1) };
-        if !(unsafe { *fresh0 } as libc::c_int != '\0' as i32) {
+        let fresh0 = s;
+        s = unsafe { s.offset(1) };
+        if unsafe { *fresh0 } as libc::c_int == '\0' as i32 {
             break;
         }
         len = len.wrapping_add(1);
     }
-    return len;
+    len
 }
 #[no_mangle]
-pub extern "C" fn trie_char_strsize(str: *const TrieChar) -> size_t {
-    return (trie_char_strlen(str))
-        .wrapping_mul(::core::mem::size_of::<TrieChar>() as libc::c_ulong);
+pub unsafe extern "C" fn trie_char_strsize(str: *const TrieChar) -> size_t {
+    (trie_char_strlen(str)).wrapping_mul(::core::mem::size_of::<TrieChar>() as libc::c_ulong)
 }
 #[no_mangle]
 pub unsafe extern "C" fn trie_char_strdup(mut str: *const TrieChar) -> *mut TrieChar {
