@@ -43,10 +43,23 @@ pub struct AlphaMap {
     pub trie_map_sz: libc::c_int,
     pub trie_to_alpha_map: *mut AlphaChar,
 }
+
+#[derive(Debug)]
+pub struct AlphaMap2 {
+    ranges: Vec<AlphaRange2>,
+}
+
 #[derive(Copy, Clone, Debug)]
 // #[repr(C)]
 pub struct AlphaRange {
     pub next: *mut AlphaRange,
+    pub begin: AlphaChar,
+    pub end: AlphaChar,
+}
+#[derive(Copy, Clone, Debug)]
+// #[repr(C)]
+pub struct AlphaRange2 {
+    // pub next: *mut AlphaRange,
     pub begin: AlphaChar,
     pub end: AlphaChar,
 }
@@ -84,6 +97,12 @@ impl AlphaMap {
             trie_map_sz: 0,
             trie_to_alpha_map: ptr::null_mut(),
         }
+    }
+}
+
+impl AlphaMap2 {
+    pub fn new() -> AlphaMap2 {
+        Self { ranges: Vec::new() }
     }
 }
 
@@ -173,7 +192,6 @@ impl AlphaMap {
                     }
                     alpha_map_add_range_only(&mut alpha_map, b as AlphaChar, e as AlphaChar);
                     i += 1;
-                    i;
                 }
                 match current_block {
                     10306619946931033911 => {}
@@ -324,6 +342,18 @@ impl AlphaMap {
     }
 }
 
+impl AlphaMap2 {
+    const SIGNATURE_SIZE: usize = 4;
+    pub fn get_serialized_size(&self) -> usize {
+        let ranges_count = self.get_total_ranges();
+        return Self::SIGNATURE_SIZE
+            + ::core::mem::size_of::<i32>()
+            + (::core::mem::size_of::<AlphaChar>() * 2 * ranges_count);
+    }
+    fn get_total_ranges(&self) -> usize {
+        self.ranges.len()
+    }
+}
 pub unsafe fn alpha_map_serialize_bin(alpha_map: *const AlphaMap, ptr: *mut *mut uint8) {
     serialize_int32_be_incr(ptr, 0xd9fcd9fc as libc::c_uint as int32);
     serialize_int32_be_incr(ptr, AlphaMap::get_total_ranges(&*alpha_map) as i32);
@@ -579,6 +609,90 @@ impl AlphaMap {
         Ok(())
     }
 }
+impl AlphaMap2 {
+    pub fn add_range(&mut self, begin: AlphaChar, end: AlphaChar) -> DatrieResult<()> {
+        self.add_range_only(begin, end)?;
+        dbg!(&self.ranges);
+        self.recalc_work_area();
+        Ok(())
+    }
+    fn add_range_only(&mut self, begin: AlphaChar, end: AlphaChar) -> DatrieResult<()> {
+        dbg!(&begin, &end);
+        let mut range_added = false;
+        for range in self.ranges.iter_mut() {
+            dbg!(&range);
+            if begin <= range.begin && range.end <= end {
+                range.begin = begin;
+                range.end = end;
+                range_added = true;
+                break;
+            }
+            if range.begin <= begin && begin < range.end {
+                range.end = end;
+                range_added = true;
+                break;
+            }
+            if range.begin <= end && end < range.end {
+                range.begin = begin;
+                range_added = true;
+                break;
+            }
+            if range.begin == end + 1 {
+                range.begin = begin;
+                range_added = true;
+                break;
+            }
+            if range.end + 1 == begin {
+                range.end = end;
+                range_added = true;
+                break;
+            }
+        }
+        if !range_added {
+            self.ranges.push(AlphaRange2 { begin, end });
+        }
+        self.ranges.sort_by(|a, b| a.begin.cmp(&b.begin));
+
+        self.ranges = {
+            let mut new_ranges = Vec::new();
+            let mut range_opt: Option<AlphaRange2> = None;
+            for range in &self.ranges {
+                dbg!(&range_opt);
+                dbg!(&range);
+                if let Some(mut prev_range) = range_opt.take() {
+                    if prev_range.end + 1 < range.begin {
+                        new_ranges.push(prev_range);
+                        range_opt = Some(range.clone());
+                    } else {
+                        prev_range.end = range.end;
+                        range_opt = Some(prev_range);
+                    }
+                } else {
+                    range_opt = Some(range.clone());
+                }
+            }
+            if let Some(range) = range_opt.take() {
+                new_ranges.push(range);
+            }
+            new_ranges
+        };
+        Ok(())
+    }
+    fn recalc_work_area(&mut self) {
+        let n_trie = self.ranges.iter().fold(0u32, |n, x| {
+            n.wrapping_add(x.end.wrapping_sub(x.begin).wrapping_add(1))
+        });
+        assert!(n_trie >= 0);
+    }
+    const ERROR_CHAR: TrieIndex = 0x7fffffff;
+    pub fn char_to_trie(&self, ac: AlphaChar) -> TrieIndex {
+        if ac == 0 {
+            0
+        } else {
+            Self::ERROR_CHAR
+        }
+    }
+}
 pub unsafe fn alpha_map_char_to_trie(alpha_map: *const AlphaMap, ac: AlphaChar) -> TrieIndex {
     let mut alpha_begin: TrieIndex = 0;
     if (0 as libc::c_int as libc::c_uint == ac) as libc::c_int as libc::c_long != 0 {
@@ -630,9 +744,7 @@ pub unsafe fn alpha_map_char_to_trie_str(
         }
         *p = tc as TrieChar;
         p = p.offset(1);
-        p;
         str = str.offset(1);
-        str;
     }
     match current_block {
         13430631152357385211 => {
@@ -671,47 +783,4 @@ pub unsafe fn alpha_map_trie_to_char_str(
 }
 
 #[cfg(test)]
-mod tests {
-    use crate::DatrieResult;
-
-    use super::{alpha_map_serialize_bin, AlphaMap};
-
-    #[test]
-    fn get_serialized_size_works() -> DatrieResult<()> {
-        let mut alpha_map = AlphaMap::new();
-        alpha_map.add_range(0x00, 0xff)?;
-        let size = alpha_map.get_serialized_size();
-        assert_eq!(size, 16);
-        Ok(())
-    }
-
-    #[test]
-    fn get_total_ranges_works() -> DatrieResult<()> {
-        let mut alpha_map = AlphaMap::new();
-        alpha_map.add_range(0x00, 0xff)?;
-        let size = alpha_map.get_total_ranges();
-        assert_eq!(size, 1);
-        Ok(())
-    }
-
-    #[test]
-    #[ignore = "fails because of double free"]
-    fn serialize_works() -> DatrieResult<()> {
-        let mut alpha_map = AlphaMap::new();
-        alpha_map.add_range(0x00, 0xff)?;
-        let size = alpha_map.get_serialized_size();
-        let buf: Vec<u8> = Vec::with_capacity(size as usize);
-        let mut buf = std::mem::ManuallyDrop::new(buf);
-        let mut serialized_data = buf.as_mut_ptr();
-        let buf_cap = buf.capacity();
-        unsafe {
-            alpha_map_serialize_bin(&alpha_map, &mut serialized_data);
-        }
-        let serialized_data =
-            unsafe { Vec::from_raw_parts(serialized_data, size as usize, buf_cap) };
-        let mut serialized_self_data = Vec::with_capacity(size);
-        alpha_map.serialize(&mut serialized_self_data)?;
-        assert_eq!(serialized_data, serialized_self_data);
-        Ok(())
-    }
-}
+mod tests;

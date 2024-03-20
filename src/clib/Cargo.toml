@@ -10,6 +10,8 @@ edition = "2021"
 name = "datrie"
 path = "lib.rs"
 crate-type = ["cdylib", "staticlib"]
+test = false
+doctest = false
 
 [dependencies]
 datrie = { version = "0.1.0", path = "../lib" }
