@@ -49,7 +49,7 @@ pub unsafe extern "C" fn alpha_map_new() -> *mut AlphaMap {
     return Box::into_raw(Box::new(alpha_map));
 }
 #[no_mangle]
-pub extern "C" fn alpha_map_clone(mut a_map: *const AlphaMap) -> *mut AlphaMap {
+pub unsafe extern "C" fn alpha_map_clone(mut a_map: *const AlphaMap) -> *mut AlphaMap {
     if a_map.is_null() {
         return std::ptr::null_mut();
     }
@@ -58,7 +58,7 @@ pub extern "C" fn alpha_map_clone(mut a_map: *const AlphaMap) -> *mut AlphaMap {
     return Box::into_raw(Box::new(alpha_map));
 }
 #[no_mangle]
-pub extern "C" fn alpha_map_free(mut alpha_map: *mut AlphaMap) {
+pub unsafe extern "C" fn alpha_map_free(mut alpha_map: *mut AlphaMap) {
     if alpha_map.is_null() {
         return;
     }

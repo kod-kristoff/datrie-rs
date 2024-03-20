@@ -23,7 +23,7 @@ pub type FILE = libc::FILE;
 pub const DA_OK: libc::c_int = 0;
 pub const DA_ERR: libc::c_int = -1;
 #[no_mangle]
-pub extern "C" fn trie_new(mut alpha_map: *const AlphaMap) -> *mut Trie {
+pub unsafe extern "C" fn trie_new(mut alpha_map: *const AlphaMap) -> *mut Trie {
     if alpha_map.is_null() {
         return ptr::null_mut();
     }
@@ -60,7 +60,7 @@ pub unsafe extern "C" fn trie_fread(mut file: *mut FILE) -> *mut Trie {
     }
 }
 #[no_mangle]
-pub extern "C" fn trie_free(mut trie: *mut Trie) {
+pub unsafe extern "C" fn trie_free(mut trie: *mut Trie) {
     if !trie.is_null() {
         unsafe { drop(Box::from_raw(trie)) }
     }
