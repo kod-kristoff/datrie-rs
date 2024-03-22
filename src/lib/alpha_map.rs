@@ -44,9 +44,11 @@ pub struct AlphaMap {
     pub trie_to_alpha_map: *mut AlphaChar,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct AlphaMap2 {
     ranges: Vec<AlphaRange2>,
+    alpha_to_trie_map: Vec<TrieIndex>,
+    trie_to_alpha_map: Vec<AlphaChar>,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -100,11 +102,7 @@ impl AlphaMap {
     }
 }
 
-impl AlphaMap2 {
-    pub fn new() -> AlphaMap2 {
-        Self { ranges: Vec::new() }
-    }
-}
+
 
 impl Clone for AlphaMap {
     fn clone(&self) -> AlphaMap {
@@ -682,15 +680,23 @@ impl AlphaMap2 {
         let n_trie = self.ranges.iter().fold(0u32, |n, x| {
             n.wrapping_add(x.end.wrapping_sub(x.begin).wrapping_add(1))
         });
-        assert!(n_trie >= 0);
+        dbg!(&n_trie);
+        let alpha_begin = self.ranges[0].begin;
+        let alpha_end = self.ranges[self.ranges.len()-1].end;
+        let n_alpha = alpha_end.wrapping_sub(alpha_begin).wrapping_add(1);
+        dbg!(&n_alpha);
     }
     const ERROR_CHAR: TrieIndex = 0x7fffffff;
     pub fn char_to_trie(&self, ac: AlphaChar) -> TrieIndex {
         if ac == 0 {
-            0
-        } else {
-            Self::ERROR_CHAR
+            return 0;
         }
+        let alpha_begin = self.ranges[0].begin;
+        let alpha_end = self.ranges[self.ranges.len()-1].end;
+        if alpha_begin <= ac && ac <= alpha_end {
+            return self.alpha_to_trie_map[ac.wrapping_sub(alpha_begin) as usize];
+        }
+        Self::ERROR_CHAR
     }
 }
 pub unsafe fn alpha_map_char_to_trie(alpha_map: *const AlphaMap, ac: AlphaChar) -> TrieIndex {

@@ -200,7 +200,7 @@ mod char_to_trie {
         let actual = unsafe { alpha_map_char_to_trie(&alpha_map, given) };
         assert_eq!(actual, expected);
 
-        let mut alpha_map2 = AlphaMap2::new();
+        let mut alpha_map2 = AlphaMap2::default();
         alpha_map2.add_range(0x41, 0x50)?;
         let actual = alpha_map2.char_to_trie(given);
         assert_eq!(actual, expected);
