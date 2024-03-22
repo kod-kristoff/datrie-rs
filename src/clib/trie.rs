@@ -81,7 +81,7 @@ pub unsafe extern "C" fn trie_save(
     // }
 }
 #[no_mangle]
-pub extern "C" fn trie_get_serialized_size(trie: *const Trie) -> size_t {
+pub unsafe extern "C" fn trie_get_serialized_size(trie: *const Trie) -> size_t {
     if trie.is_null() {
         return 0;
     }
@@ -143,7 +143,7 @@ pub unsafe extern "C" fn trie_store_if_absent(
     return trie.store(key, data);
 }
 #[no_mangle]
-pub extern "C" fn trie_delete(mut trie: *mut Trie, mut key: *const AlphaChar) -> Bool {
+pub unsafe extern "C" fn trie_delete(mut trie: *mut Trie, mut key: *const AlphaChar) -> Bool {
     if trie.is_null() || key.is_null() {
         return DA_FALSE;
     }

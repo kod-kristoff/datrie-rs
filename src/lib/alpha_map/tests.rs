@@ -11,7 +11,7 @@ mod get_serialized_size {
         alpha_map.add_range(0x00, 0xff)?;
         let size = alpha_map.get_serialized_size();
         assert_eq!(size, 16);
-        let mut alpha_map2 = AlphaMap2::new();
+        let mut alpha_map2 = AlphaMap2::default();
         alpha_map2.add_range(0x00, 0xff)?;
         let size2 = alpha_map2.get_serialized_size();
         assert_eq!(size, size2);
@@ -25,7 +25,7 @@ mod get_serialized_size {
         alpha_map.add_range(0x30, 0xff)?;
         let size = alpha_map.get_serialized_size();
         assert_eq!(size, 24);
-        let mut alpha_map2 = AlphaMap2::new();
+        let mut alpha_map2 = AlphaMap2::default();
         alpha_map2.add_range(0x00, 0x20)?;
         alpha_map2.add_range(0x30, 0xff)?;
         let size2 = alpha_map2.get_serialized_size();
@@ -39,7 +39,7 @@ mod get_serialized_size {
         alpha_map.add_range(0x30, 0xff)?;
         let size = alpha_map.get_serialized_size();
         assert_eq!(size, 16);
-        let mut alpha_map2 = AlphaMap2::new();
+        let mut alpha_map2 = AlphaMap2::default();
         alpha_map2.add_range(0x00, 0x40)?;
         alpha_map2.add_range(0x30, 0xff)?;
         let size2 = alpha_map2.get_serialized_size();
@@ -53,7 +53,7 @@ mod get_serialized_size {
         alpha_map.add_range(0x00, 0x40)?;
         let size = alpha_map.get_serialized_size();
         assert_eq!(size, 16);
-        let mut alpha_map2 = AlphaMap2::new();
+        let mut alpha_map2 = AlphaMap2::default();
         alpha_map2.add_range(0x30, 0xff)?;
         alpha_map2.add_range(0x00, 0x40)?;
         let size2 = alpha_map2.get_serialized_size();
@@ -67,7 +67,7 @@ mod get_serialized_size {
         alpha_map.add_range(0x30, 0x50)?;
         let size = alpha_map.get_serialized_size();
         assert_eq!(size, 16);
-        let mut alpha_map2 = AlphaMap2::new();
+        let mut alpha_map2 = AlphaMap2::default();
         alpha_map2.add_range(0x00, 0x60)?;
         alpha_map2.add_range(0x30, 0x50)?;
         let size2 = alpha_map2.get_serialized_size();
@@ -81,7 +81,7 @@ mod get_serialized_size {
         alpha_map.add_range(0x00, 0x60)?;
         let size = alpha_map.get_serialized_size();
         assert_eq!(size, 16);
-        let mut alpha_map2 = AlphaMap2::new();
+        let mut alpha_map2 = AlphaMap2::default();
         alpha_map2.add_range(0x30, 0x50)?;
         alpha_map2.add_range(0x00, 0x60)?;
         let size2 = alpha_map2.get_serialized_size();
@@ -95,7 +95,7 @@ mod get_serialized_size {
         alpha_map.add_range(0x51, 0x60)?;
         let size = alpha_map.get_serialized_size();
         assert_eq!(size, 16);
-        let mut alpha_map2 = AlphaMap2::new();
+        let mut alpha_map2 = AlphaMap2::default();
         alpha_map2.add_range(0x30, 0x50)?;
         alpha_map2.add_range(0x51, 0x60)?;
         let size2 = alpha_map2.get_serialized_size();
@@ -109,7 +109,7 @@ mod get_serialized_size {
         alpha_map.add_range(0x21, 0x30)?;
         let size = alpha_map.get_serialized_size();
         assert_eq!(size, 16);
-        let mut alpha_map2 = AlphaMap2::new();
+        let mut alpha_map2 = AlphaMap2::default();
         alpha_map2.add_range(0x31, 0x50)?;
         alpha_map2.add_range(0x21, 0x30)?;
         let size2 = alpha_map2.get_serialized_size();
@@ -124,7 +124,7 @@ mod get_serialized_size {
         alpha_map.add_range(0x31, 0x40)?;
         let size = alpha_map.get_serialized_size();
         assert_eq!(size, 16);
-        let mut alpha_map2 = AlphaMap2::new();
+        let mut alpha_map2 = AlphaMap2::default();
         alpha_map2.add_range(0x41, 0x50)?;
         alpha_map2.add_range(0x21, 0x30)?;
         alpha_map2.add_range(0x31, 0x40)?;
@@ -140,7 +140,7 @@ mod get_serialized_size {
         alpha_map.add_range(0x31, 0x3f)?;
         let size = alpha_map.get_serialized_size();
         assert_eq!(size, 24);
-        let mut alpha_map2 = AlphaMap2::new();
+        let mut alpha_map2 = AlphaMap2::default();
         alpha_map2.add_range(0x41, 0x50)?;
         alpha_map2.add_range(0x21, 0x30)?;
         alpha_map2.add_range(0x31, 0x3f)?;
@@ -156,7 +156,7 @@ mod get_serialized_size {
         alpha_map.add_range(0x32, 0x40)?;
         let size = alpha_map.get_serialized_size();
         assert_eq!(size, 24);
-        let mut alpha_map2 = AlphaMap2::new();
+        let mut alpha_map2 = AlphaMap2::default();
         alpha_map2.add_range(0x41, 0x50)?;
         alpha_map2.add_range(0x21, 0x30)?;
         alpha_map2.add_range(0x32, 0x40)?;
@@ -172,7 +172,7 @@ mod get_serialized_size {
         alpha_map.add_range(0x32, 0x3f)?;
         let size = alpha_map.get_serialized_size();
         assert_eq!(size, 32);
-        let mut alpha_map2 = AlphaMap2::new();
+        let mut alpha_map2 = AlphaMap2::default();
         alpha_map2.add_range(0x41, 0x50)?;
         alpha_map2.add_range(0x21, 0x30)?;
         alpha_map2.add_range(0x32, 0x3f)?;
