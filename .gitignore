@@ -10,3 +10,4 @@
 */.libs/
 /dist/
 src/lib/test*.tri
+.cache

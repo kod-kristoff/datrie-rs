@@ -102,8 +102,6 @@ impl AlphaMap {
     }
 }
 
-
-
 impl Clone for AlphaMap {
     fn clone(&self) -> AlphaMap {
         unsafe {
@@ -522,6 +520,7 @@ unsafe fn alpha_map_recalc_work_area(alpha_map: *mut AlphaMap) -> libc::c_int {
         } else {
             n_trie += 1;
         }
+        dbg!(&n_trie);
         (*alpha_map).alpha_end = (*range).end;
         n_alpha = ((*range).end)
             .wrapping_sub(alpha_begin)
@@ -570,6 +569,7 @@ unsafe fn alpha_map_recalc_work_area(alpha_map: *mut AlphaMap) -> libc::c_int {
                     trie_char = trie_char + 1;
                     *((*alpha_map).trie_to_alpha_map).offset(fresh0 as isize) =
                         !(0 as libc::c_int as AlphaChar);
+                    dbg!(*((*alpha_map).trie_to_alpha_map).offset(fresh0 as isize));
                 }
                 *((*alpha_map).trie_to_alpha_map).offset('\0' as i32 as isize) =
                     0 as libc::c_int as AlphaChar;
@@ -677,23 +677,48 @@ impl AlphaMap2 {
         Ok(())
     }
     fn recalc_work_area(&mut self) {
-        let n_trie = self.ranges.iter().fold(0u32, |n, x| {
+        let mut n_trie = self.ranges.iter().fold(0u32, |n, x| {
             n.wrapping_add(x.end.wrapping_sub(x.begin).wrapping_add(1))
         });
+        n_trie += 1;
         dbg!(&n_trie);
         let alpha_begin = self.ranges[0].begin;
-        let alpha_end = self.ranges[self.ranges.len()-1].end;
+        let alpha_end = self.ranges[self.ranges.len() - 1].end;
         let n_alpha = alpha_end.wrapping_sub(alpha_begin).wrapping_add(1);
         dbg!(&n_alpha);
+        self.alpha_to_trie_map = vec![Self::ERROR_CHAR; n_alpha as usize];
+        self.trie_to_alpha_map = vec![Self::ERROR_CHAR as u32; n_trie as usize];
+        let mut trie_char = 0;
+        for range in &self.ranges {
+            let mut a = range.begin;
+            while a <= range.end {
+                if trie_char == 0 {
+                    trie_char += 1;
+                }
+                self.alpha_to_trie_map[a.wrapping_sub(alpha_begin) as usize] = trie_char;
+                self.trie_to_alpha_map[trie_char as usize] = a;
+                trie_char += 1;
+                a += 1;
+            }
+        }
+        while trie_char < n_trie as i32 {
+            self.trie_to_alpha_map[trie_char as usize] = 1;
+            trie_char += 1;
+        }
+        self.trie_to_alpha_map[0] = 0;
     }
     const ERROR_CHAR: TrieIndex = 0x7fffffff;
     pub fn char_to_trie(&self, ac: AlphaChar) -> TrieIndex {
+        dbg!(&ac);
         if ac == 0 {
             return 0;
         }
         let alpha_begin = self.ranges[0].begin;
-        let alpha_end = self.ranges[self.ranges.len()-1].end;
+        dbg!(&alpha_begin);
+        let alpha_end = self.ranges[self.ranges.len() - 1].end;
+        dbg!(&alpha_end);
         if alpha_begin <= ac && ac <= alpha_end {
+            dbg!(&self.alpha_to_trie_map);
             return self.alpha_to_trie_map[ac.wrapping_sub(alpha_begin) as usize];
         }
         Self::ERROR_CHAR
