@@ -19,7 +19,7 @@ extern "C" {
 }
 pub type __off_t = libc::c_long;
 pub type __off64_t = libc::c_long;
-pub type size_t = libc::c_ulong;
+pub type size_t = libc::size_t;
 
 pub type FILE = libc::FILE;
 pub type Bool = libc::c_uint;
@@ -796,7 +796,7 @@ pub unsafe fn alpha_map_trie_to_char_str(
     let mut alpha_str: *mut AlphaChar = 0 as *mut AlphaChar;
     let mut p: *mut AlphaChar = 0 as *mut AlphaChar;
     alpha_str = malloc(
-        (trie_char_strlen(str))
+        (trie_char_strlen(str) as u64)
             .wrapping_add(1 as libc::c_int as libc::c_ulong)
             .wrapping_mul(::core::mem::size_of::<AlphaChar>() as libc::c_ulong),
     ) as *mut AlphaChar;
