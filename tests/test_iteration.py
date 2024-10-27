@@ -3,10 +3,19 @@
 from __future__ import absolute_import, unicode_literals
 
 import string
-import datrie
 
-WORDS = ['producers', 'pool', 'prepare', 'preview', 'prize', 'produce',
-         'producer', 'progress']
+import datrie_rs as datrie
+
+WORDS = [
+    "producers",
+    "pool",
+    "prepare",
+    "preview",
+    "prize",
+    "produce",
+    "producer",
+    "progress",
+]
 
 
 def _trie():
@@ -19,16 +28,16 @@ def _trie():
 
 def test_base_trie_data():
     trie = datrie.BaseTrie(string.printable)
-    trie['x'] = 1
-    trie['xo'] = 2
+    trie["x"] = 1
+    trie["xo"] = 2
     state = datrie.BaseState(trie)
-    state.walk('x')
+    state.walk("x")
 
     it = datrie.BaseIterator(state)
     it.next()
     assert it.data() == 1
 
-    state.walk('o')
+    state.walk("o")
 
     it = datrie.BaseIterator(state)
     it.next()
@@ -51,7 +60,7 @@ def test_next():
 def test_next_non_root():
     trie = _trie()
     state = datrie.State(trie)
-    state.walk('pr')
+    state.walk("pr")
     it = datrie.Iterator(state)
 
     values = []
@@ -65,7 +74,7 @@ def test_next_non_root():
 def test_next_tail():
     trie = _trie()
     state = datrie.State(trie)
-    state.walk('poo')
+    state.walk("poo")
     it = datrie.Iterator(state)
 
     values = []
@@ -90,24 +99,24 @@ def test_keys():
 def test_keys_non_root():
     trie = _trie()
     state = datrie.State(trie)
-    state.walk('pro')
+    state.walk("pro")
     it = datrie.Iterator(state)
 
     keys = []
     while it.next():
         keys.append(it.key())
 
-    assert keys == ['duce', 'ducer', 'ducers', 'gress']
+    assert keys == ["duce", "ducer", "ducers", "gress"]
 
 
 def test_keys_tail():
     trie = _trie()
     state = datrie.State(trie)
-    state.walk('pro')
+    state.walk("pro")
     it = datrie.Iterator(state)
 
     keys = []
     while it.next():
         keys.append(it.key())
 
-    assert keys == ['duce', 'ducer', 'ducers', 'gress']
+    assert keys == ["duce", "ducer", "ducers", "gress"]
