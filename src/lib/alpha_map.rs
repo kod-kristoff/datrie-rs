@@ -340,6 +340,7 @@ impl AlphaMap {
 
 impl AlphaMap2 {
     const SIGNATURE_SIZE: usize = 4;
+
     pub fn get_serialized_size(&self) -> usize {
         let ranges_count = self.get_total_ranges();
         return Self::SIGNATURE_SIZE

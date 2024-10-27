@@ -1,0 +1,23 @@
+[build-system]
+requires = ["maturin>=1.7,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = "datrie-rs"
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Rust",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: Implementation :: PyPy",
+]
+dynamic = ["version"]
+
+[tool.maturin]
+features = ["pyo3/extension-module"]
+manifest-path = "crates/python-datrie-rs/Cargo.toml"
+python-source = "python"
+module-name = "datrie_rs._datrie_rs"
+
+[tool.uv]
+package = true
+dev-dependencies = ["hypothesis>=6.113.0", "pytest>=8.3.3"]

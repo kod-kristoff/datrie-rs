@@ -2,7 +2,16 @@
 [workspace]
 resolver = "2"
 members = [
-  "src/lib",
-  "src/clib",
-  # "tools",
+    "src/lib",
+    "src/clib",
+    # "tools",
+    "crates/python-datrie-rs",
 ]
+
+[workspace.package]
+version = "0.1.0"
+rust-version = "1.74.0"
+
+[workspace.dependencies]
+# local crates
+datrie = { path = "src/lib/" }

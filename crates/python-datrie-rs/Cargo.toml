@@ -1,0 +1,17 @@
+[package]
+name = "datrie-rs"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+name = "_datrie_rs"
+crate-type = ["cdylib"]
+
+[dependencies]
+datrie = { workspace = true }
+pyo3 = "0.22.0"
+
+[features]
+# must be enabled when building with `cargo build`, maturin enables this automatically
+extension-module = ["pyo3/extension-module"]
