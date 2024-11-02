@@ -1,4 +1,6 @@
+#![allow(non_upper_case_globals)]
 #![allow(non_camel_case_types)]
+#![allow(clippy::missing_safety_doc)]
 pub mod alpha_map;
 pub mod darray;
 pub mod dstring;
