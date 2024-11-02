@@ -1,7 +1,7 @@
 use std::io::{self, SeekFrom};
 
 use ::libc;
-use byteorder::{BigEndian, ByteOrder, WriteBytesExt};
+use byteorder::{BigEndian, WriteBytesExt};
 use core::mem::size_of;
 
 use crate::{
@@ -16,10 +16,8 @@ extern "C" {
     fn malloc(_: libc::c_ulong) -> *mut libc::c_void;
     fn realloc(_: *mut libc::c_void, _: libc::c_ulong) -> *mut libc::c_void;
     fn free(_: *mut libc::c_void);
-    fn fseek(__stream: *mut FILE, __off: libc::c_long, __whence: libc::c_int) -> libc::c_int;
     fn ftell(__stream: *mut FILE) -> libc::c_long;
     fn serialize_int32_be_incr(buff: *mut *mut uint8, val: int32);
-    fn file_read_int32(file: *mut FILE, o_val: *mut int32) -> Bool;
     fn file_write_int32(file: *mut FILE, val: int32) -> Bool;
 }
 pub type size_t = libc::c_ulong;
@@ -76,11 +74,8 @@ impl Symbols {
         if lower < self.num_symbols as usize {
             unsafe {
                 memmove(
-                    self.symbols
-                        .as_mut_ptr()
-                        .offset(lower as isize)
-                        .offset(1 as isize) as *mut libc::c_void,
-                    self.symbols.as_mut_ptr().offset(lower as isize) as *const libc::c_void,
+                    self.symbols.as_mut_ptr().add(lower).offset(1_isize) as *mut libc::c_void,
+                    self.symbols.as_mut_ptr().add(lower) as *const libc::c_void,
                     self.num_symbols as u64 - lower as u64,
                 );
             }
@@ -151,7 +146,7 @@ impl Drop for DArray {
 }
 impl DArray {
     pub fn fread_safe<R: ReadExt + io::Seek>(reader: &mut R) -> DatrieResult<DArray> {
-        let save_pos = reader.seek(SeekFrom::Current(0))?;
+        let save_pos = reader.stream_position()?;
         DArray::do_fread_safe(reader).map_err(|err| {
             if let Err(io_err) = reader.seek(SeekFrom::Start(save_pos)) {
                 return io_err.into();
@@ -160,8 +155,8 @@ impl DArray {
         })
     }
     fn do_fread_safe<R: ReadExt>(reader: &mut R) -> DatrieResult<DArray> {
-        let mut current_block: u64;
-        let mut save_pos: libc::c_long = 0;
+        let current_block: u64;
+        let save_pos: libc::c_long = 0;
         // let mut d: *mut DArray = 0 as *mut DArray;
         let mut n = 0;
         reader.read_uint32(&mut n)?;
@@ -211,7 +206,7 @@ impl DArray {
             });
             let mut n = 1isize;
             loop {
-                if !(n < num_cells as isize) {
+                if n >= num_cells as isize {
                     current_block = 11050875288958768710;
                     break;
                 }
@@ -248,10 +243,10 @@ impl DArray {
         //     free(d as *mut libc::c_void);
         // }
         // }
-        return Err(DatrieError::new(
+        Err(DatrieError::new(
             crate::ErrorKind::Bug,
             "reading darray failed".into(),
-        ));
+        ))
     }
 
     pub unsafe fn fread(file: *mut FILE) -> DatrieResult<DArray> {
@@ -272,8 +267,8 @@ impl DArray {
         }
     }
     fn do_fread<R: ReadExt>(reader: &mut R) -> DatrieResult<DArray> {
-        let mut current_block: u64;
-        let mut save_pos: libc::c_long = 0;
+        let current_block: u64;
+        let save_pos: libc::c_long = 0;
         // let mut d: *mut DArray = 0 as *mut DArray;
         let mut n = 0;
         reader.read_uint32(&mut n)?;
@@ -330,7 +325,7 @@ impl DArray {
         //     (*((*d).cells).offset(0 as libc::c_int as isize)).check = (*d).num_cells;
         let mut n: isize = 1;
         loop {
-            if !(n < num_cells as isize) {
+            if n >= num_cells as isize {
                 current_block = 11050875288958768710;
                 break;
             }
@@ -379,10 +374,10 @@ impl DArray {
         //         free(d as *mut libc::c_void);
         //     }
         // }
-        return Err(DatrieError::new(
+        Err(DatrieError::new(
             crate::ErrorKind::Bug,
             format!("reading darray failed: reading cell '{}' failed", n),
-        ));
+        ))
     }
 
     // pub unsafe fn fwrite(&self, file: *mut FILE) -> DatrieResult<()> {
@@ -402,14 +397,14 @@ pub unsafe fn da_fwrite(d: *const DArray, file: *mut FILE) -> libc::c_int {
         }
         i += 1;
     }
-    return 0 as libc::c_int;
+    0 as libc::c_int
 }
 impl DArray {
     pub fn get_serialized_size(&self) -> usize {
         if self.num_cells > 0 {
-            return 4 * self.num_cells as usize * 2;
+            4 * self.num_cells as usize * 2
         } else {
-            return 0;
+            0
         }
     }
     pub fn serialize(&self, writer: &mut dyn std::io::Write) -> DatrieResult<()> {
@@ -444,25 +439,25 @@ pub unsafe fn da_serialize(d: *const DArray, ptr: *mut *mut uint8) {
 }
 impl DArray {
     pub fn get_root(&self) -> TrieIndex {
-        return 2 as libc::c_int;
+        2 as libc::c_int
     }
     pub fn get_base(&self, s: TrieIndex) -> TrieIndex {
-        return if s < self.num_cells() as TrieIndex {
+        if s < self.num_cells() as TrieIndex {
             let base = unsafe { (*((self).cells).offset(s as isize)).base };
             assert_eq!(base, self.cells2[s as usize].base);
             base
         } else {
             0 as libc::c_int
-        };
+        }
     }
     pub fn get_check(&self, s: TrieIndex) -> TrieIndex {
-        return if s < self.num_cells() as TrieIndex {
+        if s < self.num_cells() as TrieIndex {
             let check = unsafe { (*(self.cells).offset(s as isize)).check };
             assert_eq!(check, self.cells2[s as usize].check);
             check
         } else {
             0 as libc::c_int
-        };
+        }
     }
     pub fn num_cells(&self) -> usize {
         assert_eq!(self.num_cells as usize, self.cells2.len());
@@ -501,7 +496,7 @@ impl DArray {
             *s = next;
             return DA_TRUE;
         }
-        return DA_FALSE;
+        DA_FALSE
     }
     pub unsafe fn insert_branch(
         &mut self,
@@ -511,7 +506,7 @@ impl DArray {
     ) -> TrieIndex {
         // let mut base: TrieIndex = 0;
         let mut next: TrieIndex = 0;
-        let mut base = self.get_base(s);
+        let base = self.get_base(s);
         if base > 0 as libc::c_int {
             next = base + c as libc::c_int;
             if self.get_check(next) == s {
@@ -545,7 +540,7 @@ impl DArray {
         }
         self.alloc_cell(next);
         self.set_check(next, s);
-        return next;
+        next
     }
 }
 
@@ -614,15 +609,15 @@ impl DArray {
     //     self.set_check(next, s);
     //     return next;
     // }
-    unsafe fn check_free_cell(&mut self, mut s: TrieIndex) -> Bool {
-        return (self.extend_pool(s) as libc::c_uint != 0 && self.get_check(s) < 0 as libc::c_int)
-            as libc::c_int as Bool;
+    unsafe fn check_free_cell(&mut self, s: TrieIndex) -> Bool {
+        (self.extend_pool(s) as libc::c_uint != 0 && self.get_check(s) < 0 as libc::c_int)
+            as libc::c_int as Bool
     }
     fn has_children(&self, s: TrieIndex) -> Bool {
-        let mut base: TrieIndex = 0;
+        let base: TrieIndex = 0;
         let mut c: TrieIndex = 0;
         let mut max_c: TrieIndex = 0;
-        let mut base = self.get_base(s);
+        let base = self.get_base(s);
         if 0 as libc::c_int == base || base < 0 as libc::c_int {
             return DA_FALSE;
         }
@@ -638,7 +633,7 @@ impl DArray {
             }
             c += 1;
         }
-        return DA_FALSE;
+        DA_FALSE
     }
 }
 impl DArray {
@@ -657,13 +652,13 @@ impl DArray {
                 syms.symbols[fresh0] = c as TrieChar;
             }
         }
-        return syms;
+        syms
     }
 
-    unsafe fn find_free_base(&mut self, mut symbols: &Symbols) -> TrieIndex {
+    unsafe fn find_free_base(&mut self, symbols: &Symbols) -> TrieIndex {
         let mut first_sym: TrieChar = 0;
         let mut s: TrieIndex = 0;
-        first_sym = symbols.get(0 as usize);
+        first_sym = symbols.get(0_usize);
         s = -self.get_check(1 as libc::c_int);
         while s != 1 as libc::c_int && s < first_sym as TrieIndex + 3 as libc::c_int {
             s = -self.get_check(s);
@@ -682,21 +677,20 @@ impl DArray {
             }
         }
         while self.fit_symbols(s - first_sym as libc::c_int, symbols) as u64 == 0 {
-            if -self.get_check(s) == 1 as libc::c_int {
-                if (self.extend_pool(self.num_cells) as u64 == 0) as libc::c_int as libc::c_long
+            if -self.get_check(s) == 1 as libc::c_int
+                && (self.extend_pool(self.num_cells) as u64 == 0) as libc::c_int as libc::c_long
                     != 0
-                {
-                    return 0 as libc::c_int;
-                }
+            {
+                return 0 as libc::c_int;
             }
             s = -self.get_check(s);
         }
-        return s - first_sym as libc::c_int;
+        s - first_sym as libc::c_int
     }
-    unsafe fn fit_symbols(&mut self, mut base: TrieIndex, symbols: &Symbols) -> Bool {
+    unsafe fn fit_symbols(&mut self, base: TrieIndex, symbols: &Symbols) -> Bool {
         let mut i = 0;
         while i < symbols.num() {
-            let mut sym: TrieChar = symbols.get(i);
+            let sym: TrieChar = symbols.get(i);
             if base > 0x7fffffff as libc::c_int - sym as libc::c_int
                 || self.check_free_cell(base + sym as libc::c_int) as u64 == 0
             {
@@ -704,9 +698,9 @@ impl DArray {
             }
             i += 1;
         }
-        return DA_TRUE;
+        DA_TRUE
     }
-    unsafe fn relocate_base(&mut self, mut s: TrieIndex, mut new_base: TrieIndex) {
+    unsafe fn relocate_base(&mut self, s: TrieIndex, new_base: TrieIndex) {
         let mut old_base: TrieIndex = 0;
         // let mut symbols: *mut Symbols = 0 as *mut Symbols;
         // let mut i: libc::c_int = 0;
@@ -726,8 +720,7 @@ impl DArray {
             self.set_base(new_next, old_next_base);
             if old_next_base > 0 as libc::c_int {
                 let mut c: TrieIndex = 0;
-                let mut max_c: TrieIndex = if (255 as libc::c_int) < self.num_cells - old_next_base
-                {
+                let max_c: TrieIndex = if (255 as libc::c_int) < self.num_cells - old_next_base {
                     255 as libc::c_int
                 } else {
                     self.num_cells - old_next_base
@@ -746,7 +739,7 @@ impl DArray {
         self.set_base(s, new_base);
     }
     unsafe fn extend_pool(&mut self, to_index: TrieIndex) -> Bool {
-        let mut new_block: *mut libc::c_void = 0 as *mut libc::c_void;
+        let mut new_block: *mut libc::c_void = std::ptr::null_mut::<libc::c_void>();
         let mut new_begin: TrieIndex = 0;
         let mut i: TrieIndex = 0;
         let mut free_tail: TrieIndex = 0;
@@ -789,7 +782,7 @@ impl DArray {
         self.set_base(1 as libc::c_int, -to_index);
         // (*self.cells.offset(0 as libc::c_int as isize)).check = self.num_cells;
         self.set_check(0, self.num_cells);
-        return DA_TRUE;
+        DA_TRUE
     }
 
     pub fn prune(&mut self, s: TrieIndex) {
@@ -838,7 +831,7 @@ impl DArray {
         let mut max_c: TrieIndex = 0;
         loop {
             base = self.get_base(root);
-            if !(base >= 0 as libc::c_int) {
+            if base < 0 as libc::c_int {
                 break;
             }
             max_c = if (255 as libc::c_int) < self.num_cells - base {
@@ -859,14 +852,14 @@ impl DArray {
             trie_string_append_char(keybuff, c as TrieChar);
             root = base + c;
         }
-        return root;
+        root
     }
     pub unsafe fn next_separate(
         &self,
         // mut d: *mut DArray,
-        mut root: TrieIndex,
+        root: TrieIndex,
         mut sep: TrieIndex,
-        mut keybuff: *mut TrieString,
+        keybuff: *mut TrieString,
     ) -> TrieIndex {
         let mut parent: TrieIndex = 0;
         let mut base: TrieIndex = 0;
@@ -884,7 +877,7 @@ impl DArray {
             };
             loop {
                 c += 1;
-                if !(c <= max_c) {
+                if c > max_c {
                     break;
                 }
                 if self.get_check(base + c) == parent {
@@ -894,7 +887,7 @@ impl DArray {
             }
             sep = parent;
         }
-        return 0 as libc::c_int;
+        0 as libc::c_int
     }
 }
 

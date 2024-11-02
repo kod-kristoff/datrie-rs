@@ -1,22 +1,14 @@
 use std::io::{self, SeekFrom, Write};
 
 use ::libc;
-use byteorder::{BigEndian, ByteOrder, WriteBytesExt};
+use byteorder::{BigEndian, WriteBytesExt};
 use core::mem::size_of;
-use libc::c_void;
 
 use crate::{
-    fileutils::ReadExt,
-    trie::TrieCharString,
-    trie_string::{trie_char_strdup, TrieString},
-    DatrieError, DatrieResult,
+    fileutils::ReadExt, trie::TrieCharString, trie_string::trie_char_strdup, DatrieError,
+    DatrieResult,
 };
 
-extern "C" {
-    fn memcpy(_: *mut libc::c_void, _: *const libc::c_void, _: libc::c_ulong) -> *mut libc::c_void;
-    fn malloc(_: libc::c_ulong) -> *mut libc::c_void;
-    fn free(_: *mut libc::c_void);
-}
 pub type size_t = libc::c_ulong;
 pub type __off_t = libc::c_long;
 pub type __off64_t = libc::c_long;
@@ -59,6 +51,12 @@ impl TailBlock {
     }
 }
 
+impl Default for Tail {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Tail {
     pub fn new() -> Tail {
         Tail {
@@ -70,7 +68,7 @@ impl Tail {
 
 impl Tail {
     pub fn fread_safe<R: ReadExt + io::Seek>(reader: &mut R) -> DatrieResult<Tail> {
-        let save_pos = reader.seek(SeekFrom::Current(0))?;
+        let save_pos = reader.stream_position()?;
         Tail::do_fread_safe(reader).map_err(|err| {
             if let Err(io_err) = reader.seek(SeekFrom::Start(save_pos)) {
                 return io_err.into();
@@ -104,7 +102,7 @@ impl Tail {
         let mut tails2 = Vec::with_capacity(num_tails as usize);
         let mut i = 0 as libc::c_int;
         loop {
-            if !(i < num_tails) {
+            if i >= num_tails {
                 current_block = 15904375183555213903;
                 break;
             }
@@ -145,11 +143,11 @@ impl Tail {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn tail_fwrite(mut t: *const Tail, mut file: *mut FILE) -> libc::c_int {
+pub unsafe extern "C" fn tail_fwrite(t: *const Tail, file: *mut FILE) -> libc::c_int {
     let tail = &*t;
     let size = tail.get_serialized_size();
     let mut buf = vec![0; size];
-    if let Ok(_) = tail.serialize_to_slice(&mut buf) {
+    if tail.serialize_to_slice(&mut buf).is_ok() {
         if libc::fwrite(
             buf.as_ptr() as *const libc::c_void,
             size_of::<u8>(),
@@ -157,18 +155,18 @@ pub unsafe extern "C" fn tail_fwrite(mut t: *const Tail, mut file: *mut FILE) ->
             file,
         ) == size
         {
-            return 0;
+            0
         } else {
-            return -1;
+            -1
         }
     } else {
-        return -1;
+        -1
     }
 }
 
 impl Tail {
     pub fn num_tails(&self) -> usize {
-        return self.tails2.len();
+        self.tails2.len()
     }
 
     pub fn get_serialized_size(&self) -> usize {
@@ -182,7 +180,7 @@ impl Tail {
                 dynamic_count += self.tails2[i].suffix.len();
             }
         }
-        return static_count + dynamic_count;
+        static_count + dynamic_count
     }
 
     const SIGNATURE: u32 = 0xdffcdffc;
@@ -215,7 +213,7 @@ impl Tail {
             buf.write_i16::<BigEndian>(length as i16)?;
             written += 10;
             buf.write_all(self.tails2[i].suffix.as_bytes())?;
-            written += length as usize;
+            written += length;
         }
         Ok(written)
     }
@@ -225,20 +223,20 @@ impl Tail {
 pub unsafe extern "C" fn tail_serialize(t: *const Tail, ptr: *mut *mut uint8) -> libc::c_int {
     let tail: &Tail = &*t;
     let buf: &mut [u8] = core::slice::from_raw_parts_mut(*ptr, tail.get_serialized_size());
-    if let Ok(_) = tail.serialize_to_slice(buf) {
-        return 0;
+    if tail.serialize_to_slice(buf).is_ok() {
+        0
     } else {
-        return -1;
+        -1
     }
 }
 impl Tail {
     pub unsafe fn get_suffix(&self, mut index: TrieIndex) -> *const TrieChar {
         index -= 1 as libc::c_int;
-        return if (index < self.num_tails() as TrieIndex) as libc::c_int as libc::c_long != 0 {
+        if (index < self.num_tails() as TrieIndex) as libc::c_int as libc::c_long != 0 {
             self.tails2[index as usize].suffix.as_ptr()
         } else {
-            0 as *mut TrieChar
-        };
+            std::ptr::null_mut::<TrieChar>()
+        }
     }
     pub fn get_suffix2(&self, mut index: TrieIndex) -> Option<&[TrieChar]> {
         index -= 1;
@@ -247,7 +245,7 @@ impl Tail {
     pub unsafe fn set_suffix(&mut self, mut index: TrieIndex, suffix: *const TrieChar) -> Bool {
         index -= 1 as libc::c_int;
         if ((index as usize) < self.num_tails()) as libc::c_int as libc::c_long != 0 {
-            let mut tmp: *mut TrieChar = 0 as *mut TrieChar;
+            let mut tmp: *mut TrieChar = std::ptr::null_mut::<TrieChar>();
             if !suffix.is_null() {
                 tmp = trie_char_strdup(suffix);
                 if tmp.is_null() as libc::c_int as libc::c_long != 0 {
@@ -261,7 +259,7 @@ impl Tail {
             }
             return DA_TRUE;
         }
-        return DA_FALSE;
+        DA_FALSE
     }
 }
 impl Tail {
@@ -275,7 +273,7 @@ impl Tail {
             return 0 as libc::c_int;
         }
         self.set_suffix(new_block, suffix);
-        return new_block;
+        new_block
     }
     unsafe fn alloc_block(&mut self) -> TrieIndex {
         let block: TrieIndex;
@@ -286,7 +284,7 @@ impl Tail {
             block = self.num_tails() as TrieIndex;
             self.tails2.push(TailBlock::default());
         }
-        return block + 1 as libc::c_int;
+        block + 1 as libc::c_int
     }
 }
 // }
@@ -314,19 +312,19 @@ impl Tail {
 impl Tail {
     pub fn get_data(&self, mut index: TrieIndex) -> TrieData {
         index -= 1 as libc::c_int;
-        return if ((index as usize) < self.num_tails()) as libc::c_int as libc::c_long != 0 {
+        if ((index as usize) < self.num_tails()) as libc::c_int as libc::c_long != 0 {
             self.tails2[index as usize].data
         } else {
             -(1 as libc::c_int)
-        };
+        }
     }
     pub fn get_data2(&self, mut index: TrieIndex) -> Option<TrieData> {
         index -= 1 as libc::c_int;
-        return if ((index as usize) < self.num_tails()) as libc::c_int as libc::c_long != 0 {
+        if ((index as usize) < self.num_tails()) as libc::c_int as libc::c_long != 0 {
             Some(self.tails2[index as usize].data)
         } else {
             None
-        };
+        }
     }
     pub fn set_data(&mut self, mut index: TrieIndex, data: TrieData) -> Bool {
         index -= 1 as libc::c_int;
@@ -334,7 +332,7 @@ impl Tail {
             self.tails2[index as usize].data = data;
             return DA_TRUE;
         }
-        return DA_FALSE;
+        DA_FALSE
     }
 }
 impl Tail {
@@ -365,7 +363,7 @@ impl Tail {
             j += 1;
         }
         *suffix_idx = j;
-        return i;
+        i
     }
     pub fn walk_str2(&self, index: TrieIndex, suffix_idx: &mut usize, s: &[TrieChar]) -> usize {
         let mut i = 0;
@@ -380,11 +378,11 @@ impl Tail {
             }
             *suffix_idx = j;
         }
-        return i;
+        i
     }
     pub fn walk_char2(&self, s: TrieIndex, suffix_idx: &mut usize, c: TrieChar) -> bool {
         if let Some(suffix) = self.get_suffix2(s) {
-            if c == b'\0' && (*suffix_idx as usize) == suffix.len() {
+            if c == b'\0' && { *suffix_idx } == suffix.len() {
                 return true;
             }
             if let Some(suffix_char) = suffix.get(*suffix_idx) {
@@ -394,7 +392,7 @@ impl Tail {
                 }
             }
         }
-        return false;
+        false
     }
     pub unsafe fn walk_char(
         &self,
@@ -414,7 +412,7 @@ impl Tail {
             }
             return DA_TRUE;
         }
-        return DA_FALSE;
+        DA_FALSE
     }
 }
 
@@ -431,7 +429,7 @@ mod tests {
         unsafe { tail.alloc_block() };
         assert_eq!(tail.get_serialized_size(), 22);
         unsafe {
-            tail.add_suffix(['a' as u8, 'p' as u8, '\0' as u8].as_ptr());
+            tail.add_suffix([b'a', b'p', b'\0'].as_ptr());
         }
         assert_eq!(tail.get_serialized_size(), 34);
         Ok(())
@@ -442,7 +440,7 @@ mod tests {
         let mut tail = Tail::new();
 
         unsafe {
-            tail.add_suffix(['a' as u8, 'p' as u8, '\0' as u8].as_ptr());
+            tail.add_suffix([b'a', b'p', b'\0'].as_ptr());
             assert!(!tail.get_suffix(1).is_null());
         }
         // walk 'a'

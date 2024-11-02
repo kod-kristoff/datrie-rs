@@ -1,6 +1,6 @@
 use byteorder::{BigEndian, ReadBytesExt};
 // use libc::fread;
-use std::{fs, io};
+use std::io;
 
 use ::libc;
 extern "C" {
@@ -92,9 +92,8 @@ impl io::Seek for CFile {
     fn seek(&mut self, pos: io::SeekFrom) -> io::Result<u64> {
         let (offset, whence) = match pos {
             io::SeekFrom::Start(offset) => (offset as i64, libc::SEEK_SET),
-            io::SeekFrom::Current(offset) => (offset as i64, libc::SEEK_CUR),
-            io::SeekFrom::End(offset) => (offset as i64, libc::SEEK_END),
-            _ => todo!(),
+            io::SeekFrom::Current(offset) => (offset, libc::SEEK_CUR),
+            io::SeekFrom::End(offset) => (offset, libc::SEEK_END),
         };
         let res = unsafe { libc::fseek(self.file, offset, whence) };
         if res != 0 {
@@ -122,14 +121,14 @@ impl io::Read for CFile {
         Ok(len as usize)
     }
 }
-unsafe extern "C" fn parse_int32_be(mut buff: *const uint8) -> int32 {
-    return (*buff.offset(0 as libc::c_int as isize) as libc::c_int) << 24 as libc::c_int
+unsafe extern "C" fn parse_int32_be(buff: *const uint8) -> int32 {
+    (*buff.offset(0 as libc::c_int as isize) as libc::c_int) << 24 as libc::c_int
         | (*buff.offset(1 as libc::c_int as isize) as libc::c_int) << 16 as libc::c_int
         | (*buff.offset(2 as libc::c_int as isize) as libc::c_int) << 8 as libc::c_int
-        | *buff.offset(3 as libc::c_int as isize) as libc::c_int;
+        | *buff.offset(3 as libc::c_int as isize) as libc::c_int
 }
 #[no_mangle]
-pub unsafe extern "C" fn file_read_int32(mut file: *mut FILE, mut o_val: *mut int32) -> Bool {
+pub unsafe extern "C" fn file_read_int32(file: *mut FILE, o_val: *mut int32) -> Bool {
     let mut buff: [uint8; 4] = [0; 4];
     if fread(
         buff.as_mut_ptr() as *mut libc::c_void,
@@ -141,7 +140,7 @@ pub unsafe extern "C" fn file_read_int32(mut file: *mut FILE, mut o_val: *mut in
         *o_val = parse_int32_be(buff.as_mut_ptr());
         return DA_TRUE;
     }
-    return DA_FALSE;
+    DA_FALSE
 }
 pub trait ReadExt: io::Read + Sized {
     fn read_int32(&mut self, val: &mut i32) -> io::Result<()>;
@@ -195,22 +194,22 @@ pub unsafe extern "C" fn serialize_int32_be_incr(buff: *mut *mut uint8, val: int
     *buff = (*buff).offset(4 as libc::c_int as isize);
 }
 #[no_mangle]
-pub unsafe extern "C" fn file_write_int32(mut file: *mut FILE, mut val: int32) -> Bool {
+pub unsafe extern "C" fn file_write_int32(file: *mut FILE, val: int32) -> Bool {
     let mut buff: [uint8; 4] = [0; 4];
     serialize_int32_be(buff.as_mut_ptr(), val);
-    return (fwrite(
+    (fwrite(
         buff.as_mut_ptr() as *const libc::c_void,
         4 as libc::c_int as libc::c_ulong,
         1 as libc::c_int as libc::c_ulong,
         file,
-    ) == 1 as libc::c_int as libc::c_ulong) as libc::c_int as Bool;
+    ) == 1 as libc::c_int as libc::c_ulong) as libc::c_int as Bool
 }
-unsafe extern "C" fn parse_int16_be(mut buff: *const uint8) -> int16 {
-    return ((*buff.offset(0 as libc::c_int as isize) as libc::c_int) << 8 as libc::c_int
-        | *buff.offset(1 as libc::c_int as isize) as libc::c_int) as int16;
+unsafe extern "C" fn parse_int16_be(buff: *const uint8) -> int16 {
+    ((*buff.offset(0 as libc::c_int as isize) as libc::c_int) << 8 as libc::c_int
+        | *buff.offset(1 as libc::c_int as isize) as libc::c_int) as int16
 }
 #[no_mangle]
-pub unsafe extern "C" fn file_read_int16(mut file: *mut FILE, mut o_val: *mut int16) -> Bool {
+pub unsafe extern "C" fn file_read_int16(file: *mut FILE, o_val: *mut int16) -> Bool {
     let mut buff: [uint8; 2] = [0; 2];
     if fread(
         buff.as_mut_ptr() as *mut libc::c_void,
@@ -222,69 +221,69 @@ pub unsafe extern "C" fn file_read_int16(mut file: *mut FILE, mut o_val: *mut in
         *o_val = parse_int16_be(buff.as_mut_ptr());
         return DA_TRUE;
     }
-    return DA_FALSE;
+    DA_FALSE
 }
-unsafe extern "C" fn serialize_int16_be(mut buff: *mut uint8, mut val: int16) {
+unsafe extern "C" fn serialize_int16_be(buff: *mut uint8, val: int16) {
     *buff.offset(0 as libc::c_int as isize) = (val as libc::c_int >> 8 as libc::c_int) as uint8;
     *buff.offset(1 as libc::c_int as isize) = (val as libc::c_int & 0xff as libc::c_int) as uint8;
 }
 #[no_mangle]
-pub unsafe extern "C" fn serialize_int16_be_incr(mut buff: *mut *mut uint8, mut val: int16) {
+pub unsafe extern "C" fn serialize_int16_be_incr(buff: *mut *mut uint8, val: int16) {
     serialize_int16_be(*buff, val);
     *buff = (*buff).offset(2 as libc::c_int as isize);
 }
 #[no_mangle]
-pub unsafe extern "C" fn file_write_int16(mut file: *mut FILE, mut val: int16) -> Bool {
+pub unsafe extern "C" fn file_write_int16(file: *mut FILE, val: int16) -> Bool {
     let mut buff: [uint8; 2] = [0; 2];
     serialize_int16_be(buff.as_mut_ptr(), val);
-    return (fwrite(
+    (fwrite(
         buff.as_mut_ptr() as *const libc::c_void,
         2 as libc::c_int as libc::c_ulong,
         1 as libc::c_int as libc::c_ulong,
         file,
-    ) == 1 as libc::c_int as libc::c_ulong) as libc::c_int as Bool;
+    ) == 1 as libc::c_int as libc::c_ulong) as libc::c_int as Bool
 }
 #[no_mangle]
-pub unsafe extern "C" fn file_read_int8(mut file: *mut FILE, mut o_val: *mut int8) -> Bool {
-    return (fread(
+pub unsafe extern "C" fn file_read_int8(file: *mut FILE, o_val: *mut int8) -> Bool {
+    (fread(
         o_val as *mut libc::c_void,
         ::core::mem::size_of::<int8>() as libc::c_ulong,
         1 as libc::c_int as libc::c_ulong,
         file,
-    ) == 1 as libc::c_int as libc::c_ulong) as libc::c_int as Bool;
+    ) == 1 as libc::c_int as libc::c_ulong) as libc::c_int as Bool
 }
 #[no_mangle]
-pub unsafe extern "C" fn file_write_int8(mut file: *mut FILE, mut val: int8) -> Bool {
-    return (fwrite(
+pub unsafe extern "C" fn file_write_int8(file: *mut FILE, mut val: int8) -> Bool {
+    (fwrite(
         &mut val as *mut int8 as *const libc::c_void,
         ::core::mem::size_of::<int8>() as libc::c_ulong,
         1 as libc::c_int as libc::c_ulong,
         file,
-    ) == 1 as libc::c_int as libc::c_ulong) as libc::c_int as Bool;
+    ) == 1 as libc::c_int as libc::c_ulong) as libc::c_int as Bool
 }
 #[no_mangle]
 pub unsafe extern "C" fn file_read_chars(
-    mut file: *mut FILE,
-    mut buff: *mut libc::c_char,
-    mut len: libc::c_int,
+    file: *mut FILE,
+    buff: *mut libc::c_char,
+    len: libc::c_int,
 ) -> Bool {
-    return (fread(
+    (fread(
         buff as *mut libc::c_void,
         ::core::mem::size_of::<libc::c_char>() as libc::c_ulong,
         len as libc::c_ulong,
         file,
-    ) == len as libc::c_ulong) as libc::c_int as Bool;
+    ) == len as libc::c_ulong) as libc::c_int as Bool
 }
 #[no_mangle]
 pub unsafe extern "C" fn file_write_chars(
-    mut file: *mut FILE,
-    mut buff: *const libc::c_char,
-    mut len: libc::c_int,
+    file: *mut FILE,
+    buff: *const libc::c_char,
+    len: libc::c_int,
 ) -> Bool {
-    return (fwrite(
+    (fwrite(
         buff as *const libc::c_void,
         ::core::mem::size_of::<libc::c_char>() as libc::c_ulong,
         len as libc::c_ulong,
         file,
-    ) == len as libc::c_ulong) as libc::c_int as Bool;
+    ) == len as libc::c_ulong) as libc::c_int as Bool
 }

@@ -1,5 +1,3 @@
-use core::slice;
-
 pub type TrieChar = u8;
 
 #[derive(Debug, Clone)]

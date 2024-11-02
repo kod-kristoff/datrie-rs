@@ -37,7 +37,7 @@ pub unsafe extern "C" fn trie_char_strsize(str: *const TrieChar) -> size_t {
 }
 #[no_mangle]
 pub unsafe extern "C" fn trie_char_strdup(mut str: *const TrieChar) -> *mut TrieChar {
-    let mut dup: *mut TrieChar = malloc(
+    let dup: *mut TrieChar = malloc(
         (::core::mem::size_of::<TrieChar>() as libc::c_ulong)
             .wrapping_mul((trie_char_strlen(str)).wrapping_add(1 as libc::c_int as libc::c_ulong)),
     ) as *mut TrieChar;
@@ -50,79 +50,70 @@ pub unsafe extern "C" fn trie_char_strdup(mut str: *const TrieChar) -> *mut Trie
         *fresh2 = *fresh1;
     }
     *p = '\0' as i32 as TrieChar;
-    return dup;
+    dup
 }
 #[no_mangle]
-pub unsafe extern "C" fn trie_string_new(mut n_elm: libc::c_int) -> *mut TrieString {
-    return dstring_new(
+pub unsafe extern "C" fn trie_string_new(n_elm: libc::c_int) -> *mut TrieString {
+    dstring_new(
         ::core::mem::size_of::<TrieChar>() as libc::c_ulong as libc::c_int,
         n_elm,
-    ) as *mut TrieString;
+    ) as *mut TrieString
 }
 #[no_mangle]
-pub unsafe extern "C" fn trie_string_free(mut ts: *mut TrieString) {
+pub unsafe extern "C" fn trie_string_free(ts: *mut TrieString) {
     dstring_free(ts as *mut DString);
 }
 #[no_mangle]
-pub unsafe extern "C" fn trie_string_length(mut ts: *const TrieString) -> libc::c_int {
-    return dstring_length(ts as *mut DString);
+pub unsafe extern "C" fn trie_string_length(ts: *const TrieString) -> libc::c_int {
+    dstring_length(ts as *mut DString)
 }
 #[no_mangle]
-pub unsafe extern "C" fn trie_string_get_val(mut ts: *const TrieString) -> *const libc::c_void {
-    return dstring_get_val(ts as *mut DString);
+pub unsafe extern "C" fn trie_string_get_val(ts: *const TrieString) -> *const libc::c_void {
+    dstring_get_val(ts as *mut DString)
 }
 #[no_mangle]
-pub unsafe extern "C" fn trie_string_get_val_rw(mut ts: *mut TrieString) -> *mut libc::c_void {
-    return dstring_get_val_rw(ts as *mut DString);
+pub unsafe extern "C" fn trie_string_get_val_rw(ts: *mut TrieString) -> *mut libc::c_void {
+    dstring_get_val_rw(ts as *mut DString)
 }
 #[no_mangle]
-pub unsafe extern "C" fn trie_string_clear(mut ts: *mut TrieString) {
+pub unsafe extern "C" fn trie_string_clear(ts: *mut TrieString) {
     dstring_clear(ts as *mut DString);
 }
 #[no_mangle]
-pub unsafe extern "C" fn trie_string_copy(
-    mut dst: *mut TrieString,
-    mut src: *const TrieString,
-) -> Bool {
-    return dstring_copy(dst as *mut DString, src as *const DString);
+pub unsafe extern "C" fn trie_string_copy(dst: *mut TrieString, src: *const TrieString) -> Bool {
+    dstring_copy(dst as *mut DString, src as *const DString)
 }
 #[no_mangle]
-pub unsafe extern "C" fn trie_string_append(
-    mut dst: *mut TrieString,
-    mut src: *const TrieString,
-) -> Bool {
-    return dstring_append(dst as *mut DString, src as *const DString);
+pub unsafe extern "C" fn trie_string_append(dst: *mut TrieString, src: *const TrieString) -> Bool {
+    dstring_append(dst as *mut DString, src as *const DString)
 }
 #[no_mangle]
 pub unsafe extern "C" fn trie_string_append_string(
-    mut ts: *mut TrieString,
-    mut str: *const TrieChar,
+    ts: *mut TrieString,
+    str: *const TrieChar,
 ) -> Bool {
-    return dstring_append_string(
+    dstring_append_string(
         ts as *mut DString,
         str as *const libc::c_void,
         strlen(str as *const libc::c_char) as libc::c_int,
-    );
+    )
 }
 #[no_mangle]
-pub unsafe extern "C" fn trie_string_append_char(
-    mut ts: *mut TrieString,
-    mut tc: TrieChar,
-) -> Bool {
-    return dstring_append_char(
+pub unsafe extern "C" fn trie_string_append_char(ts: *mut TrieString, mut tc: TrieChar) -> Bool {
+    dstring_append_char(
         ts as *mut DString,
         &mut tc as *mut TrieChar as *const libc::c_void,
-    );
+    )
 }
 #[no_mangle]
-pub unsafe extern "C" fn trie_string_terminate(mut ts: *mut TrieString) -> Bool {
+pub unsafe extern "C" fn trie_string_terminate(ts: *mut TrieString) -> Bool {
     static mut term: TrieChar = '\0' as i32 as TrieChar;
-    return dstring_append_char(
+    dstring_append_char(
         ts as *mut DString,
         &term as *const TrieChar as *const libc::c_void,
-    );
+    )
 }
 #[no_mangle]
-pub unsafe extern "C" fn trie_string_cut_last(mut ts: *mut TrieString) -> Bool {
-    return dstring_cut_last(ts as *mut DString);
+pub unsafe extern "C" fn trie_string_cut_last(ts: *mut TrieString) -> Bool {
+    dstring_cut_last(ts as *mut DString)
 }

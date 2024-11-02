@@ -91,7 +91,7 @@ pub fn en_alpha_map_new() -> DatrieResult<AlphaMap> {
     let mut en_map = AlphaMap::new();
     en_map.add_range(0x0061, 0x007a)?;
 
-    return Ok(en_map);
+    Ok(en_map)
 }
 
 pub fn en_trie_new() -> DatrieResult<Trie> {
@@ -511,7 +511,7 @@ pub unsafe fn dict_src_get_data(dict_src: &[DictRec], key: *const AlphaChar) -> 
         }
     }
 
-    return TRIE_DATA_ERROR;
+    TRIE_DATA_ERROR
 }
 
 // int
@@ -531,7 +531,7 @@ pub unsafe fn dict_src_set_data(
     }
 
     //     return -1;
-    return false;
+    false
 }
 
 // /*

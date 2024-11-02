@@ -50,7 +50,7 @@ extern "C" fn trie_enum_mark_rec(
     // TrieData src_data;
     let enum_data = user_data as *mut EnumData;
 
-    let src_data = unsafe { dict_src_get_data(&(*enum_data).dict_src, key) };
+    let src_data = unsafe { dict_src_get_data((*enum_data).dict_src, key) };
     if TRIE_DATA_ERROR == src_data {
         println!("Extra entry in file: key '{:?}', data {}.\n", key, key_data);
         unsafe {
@@ -66,11 +66,11 @@ extern "C" fn trie_enum_mark_rec(
         }
     } else {
         unsafe {
-            dict_src_set_data(&mut (*enum_data).dict_src, key, TRIE_DATA_READ);
+            dict_src_set_data((*enum_data).dict_src, key, TRIE_DATA_READ);
         }
     }
 
-    return DA_TRUE;
+    DA_TRUE
 }
 
 #[test]

@@ -2,7 +2,24 @@
 [workspace]
 resolver = "2"
 members = [
-  "src/lib",
-  "src/clib",
-  # "tools",
+    "src/lib",
+    "src/clib",
+    # "tools",
 ]
+
+[workspace.package]
+version = "0.1.0"
+rust-version = "1.74.0"
+edition = "2021"
+
+[workspace.dependencies]
+# local crates
+datrie = { path = "src/lib" }
+
+# external crates
+byteorder = "1.5.0"
+libc = "0.2.149"
+memchr = "2.6.4"
+rand = "0.8.5"
+rstest = "0.18.2"
+tempfile = "3.8.1"
