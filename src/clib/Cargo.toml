@@ -12,6 +12,7 @@ path = "lib.rs"
 crate-type = ["cdylib", "staticlib"]
 test = false
 doctest = false
+doc = false
 
 [dependencies]
 datrie = { version = "0.1.0", path = "../lib" }
