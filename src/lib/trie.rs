@@ -479,9 +479,7 @@ impl Trie {
             while cont as libc::c_uint != 0 && TrieIterator::next(iter) as libc::c_uint != 0 {
                 let key: *mut AlphaChar = TrieIterator::get_key(iter);
                 let data: TrieData = TrieIterator::get_data(iter);
-                cont = enum_func.expect("non-null function pointer")(
-                    key, data, user_data
-                );
+                cont = enum_func.expect("non-null function pointer")(key, data, user_data);
                 free(key as *mut libc::c_void);
             }
             TrieIterator::free(iter);
@@ -619,7 +617,9 @@ impl TrieState {
         }
         if (*s).is_suffix == 0 {
             let mut index: TrieIndex = (*s).index;
-            if (*(*s).trie).da.walk(&mut index, '\0' as i32 as TrieChar) as u64 != 0 && (*(*(*s).trie).da).get_base(index) < 0 as libc::c_int {
+            if (*(*s).trie).da.walk(&mut index, '\0' as i32 as TrieChar) as u64 != 0
+                && (*(*(*s).trie).da).get_base(index) < 0 as libc::c_int
+            {
                 index = -(*(*(*s).trie).da).get_base(index);
                 return ((*(*s).trie).tail).get_data(index);
             }

@@ -80,17 +80,11 @@ pub unsafe extern "C" fn trie_string_clear(ts: *mut TrieString) {
     dstring_clear(ts as *mut DString);
 }
 #[no_mangle]
-pub unsafe extern "C" fn trie_string_copy(
-    dst: *mut TrieString,
-    src: *const TrieString,
-) -> Bool {
+pub unsafe extern "C" fn trie_string_copy(dst: *mut TrieString, src: *const TrieString) -> Bool {
     dstring_copy(dst as *mut DString, src as *const DString)
 }
 #[no_mangle]
-pub unsafe extern "C" fn trie_string_append(
-    dst: *mut TrieString,
-    src: *const TrieString,
-) -> Bool {
+pub unsafe extern "C" fn trie_string_append(dst: *mut TrieString, src: *const TrieString) -> Bool {
     dstring_append(dst as *mut DString, src as *const DString)
 }
 #[no_mangle]
@@ -105,10 +99,7 @@ pub unsafe extern "C" fn trie_string_append_string(
     )
 }
 #[no_mangle]
-pub unsafe extern "C" fn trie_string_append_char(
-    ts: *mut TrieString,
-    mut tc: TrieChar,
-) -> Bool {
+pub unsafe extern "C" fn trie_string_append_char(ts: *mut TrieString, mut tc: TrieChar) -> Bool {
     dstring_append_char(
         ts as *mut DString,
         &mut tc as *mut TrieChar as *const libc::c_void,

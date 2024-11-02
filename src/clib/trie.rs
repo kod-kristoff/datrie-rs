@@ -65,10 +65,7 @@ pub unsafe extern "C" fn trie_free(trie: *mut Trie) {
     }
 }
 #[no_mangle]
-pub unsafe extern "C" fn trie_save(
-    trie: *mut Trie,
-    path: *const libc::c_char,
-) -> libc::c_int {
+pub unsafe extern "C" fn trie_save(trie: *mut Trie, path: *const libc::c_char) -> libc::c_int {
     if trie.is_null() {
         return DA_ERR;
     }

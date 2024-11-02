@@ -18,10 +18,7 @@ pub struct DString {
     pub val: *mut libc::c_void,
 }
 #[no_mangle]
-pub unsafe extern "C" fn dstring_new(
-    char_size: libc::c_int,
-    n_elm: libc::c_int,
-) -> *mut DString {
+pub unsafe extern "C" fn dstring_new(char_size: libc::c_int, n_elm: libc::c_int) -> *mut DString {
     let mut ds: *mut DString = std::ptr::null_mut::<DString>();
     ds = malloc(::core::mem::size_of::<DString>() as libc::c_ulong) as *mut DString;
     if ds.is_null() as libc::c_int as libc::c_long != 0 {
@@ -135,10 +132,7 @@ pub unsafe extern "C" fn dstring_append_string(
     DA_TRUE
 }
 #[no_mangle]
-pub unsafe extern "C" fn dstring_append_char(
-    ds: *mut DString,
-    data: *const libc::c_void,
-) -> Bool {
+pub unsafe extern "C" fn dstring_append_char(ds: *mut DString, data: *const libc::c_void) -> Bool {
     if dstring_ensure_space(ds, ((*ds).str_len + 2 as libc::c_int) * (*ds).char_size) as u64 == 0 {
         return DA_FALSE;
     }

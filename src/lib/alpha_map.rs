@@ -128,7 +128,9 @@ impl Clone for AlphaMap {
                 }
                 range = (*range).next;
             }
-            if current_block == 15619007995458559411 && alpha_map_recalc_work_area(&mut alpha_map) == 0 as libc::c_int {
+            if current_block == 15619007995458559411
+                && alpha_map_recalc_work_area(&mut alpha_map) == 0 as libc::c_int
+            {
                 return alpha_map;
             }
             // alpha_map_free(alpha_map);
@@ -194,7 +196,8 @@ impl AlphaMap {
                     10306619946931033911 => {}
                     _ => {
                         if (alpha_map_recalc_work_area(&mut alpha_map) != 0 as libc::c_int)
-                            as libc::c_int as libc::c_long == 0
+                            as libc::c_int as libc::c_long
+                            == 0
                         {
                             return Ok(alpha_map);
                         }
@@ -740,10 +743,7 @@ pub unsafe fn alpha_map_char_to_trie(alpha_map: *const AlphaMap, ac: AlphaChar) 
     0x7fffffff as libc::c_int
 }
 
-pub unsafe fn alpha_map_trie_to_char(
-    alpha_map: *const AlphaMap,
-    tc: TrieChar,
-) -> AlphaChar {
+pub unsafe fn alpha_map_trie_to_char(alpha_map: *const AlphaMap, tc: TrieChar) -> AlphaChar {
     if (tc as libc::c_int) < (*alpha_map).trie_map_sz {
         return *((*alpha_map).trie_to_alpha_map).offset(tc as isize);
     }
