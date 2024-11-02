@@ -1,6 +1,6 @@
 use ::libc;
 use byteorder::{BigEndian, ByteOrder, WriteBytesExt};
-use std::{fs, io::SeekFrom, ptr};
+use std::{io::SeekFrom, ptr};
 
 use crate::{
     fileutils::{ReadExt, ReadSeekExt},
@@ -70,7 +70,7 @@ pub unsafe fn alpha_char_strlen(str: *const AlphaChar) -> libc::c_int {
     while *p != 0 {
         p = p.offset(1);
     }
-    return p.offset_from(str) as libc::c_long as libc::c_int;
+    p.offset_from(str) as libc::c_long as libc::c_int
 }
 pub unsafe fn alpha_char_strcmp(
     mut str1: *const AlphaChar,
@@ -86,8 +86,14 @@ pub unsafe fn alpha_char_strcmp(
     if *str1 > *str2 {
         return 1 as libc::c_int;
     }
-    return 0 as libc::c_int;
+    0 as libc::c_int
 }
+impl Default for AlphaMap {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AlphaMap {
     pub fn new() -> AlphaMap {
         AlphaMap {
@@ -105,10 +111,10 @@ impl AlphaMap {
 impl Clone for AlphaMap {
     fn clone(&self) -> AlphaMap {
         unsafe {
-            let mut current_block: u64;
-            let mut range: *mut AlphaRange = 0 as *mut AlphaRange;
+            let current_block: u64;
+            let mut range: *mut AlphaRange = std::ptr::null_mut::<AlphaRange>();
             let mut alpha_map = AlphaMap::new();
-            range = (*self).first_range;
+            range = self.first_range;
             loop {
                 if range.is_null() {
                     current_block = 15619007995458559411;
@@ -122,13 +128,8 @@ impl Clone for AlphaMap {
                 }
                 range = (*range).next;
             }
-            match current_block {
-                15619007995458559411 => {
-                    if !(alpha_map_recalc_work_area(&mut alpha_map) != 0 as libc::c_int) {
-                        return alpha_map;
-                    }
-                }
-                _ => {}
+            if current_block == 15619007995458559411 && alpha_map_recalc_work_area(&mut alpha_map) == 0 as libc::c_int {
+                return alpha_map;
             }
             // alpha_map_free(alpha_map);
             // return 0 as *mut AlphaMap;
@@ -139,27 +140,27 @@ impl Clone for AlphaMap {
 impl Drop for AlphaMap {
     fn drop(&mut self) {
         unsafe {
-            let mut p: *mut AlphaRange = 0 as *mut AlphaRange;
-            let mut q: *mut AlphaRange = 0 as *mut AlphaRange;
-            p = (*self).first_range;
+            let mut p: *mut AlphaRange = std::ptr::null_mut::<AlphaRange>();
+            let mut q: *mut AlphaRange = std::ptr::null_mut::<AlphaRange>();
+            p = self.first_range;
             while !p.is_null() {
                 q = (*p).next;
                 free(p as *mut libc::c_void);
                 p = q;
             }
-            if !((*self).alpha_to_trie_map).is_null() {
-                free((*self).alpha_to_trie_map as *mut libc::c_void);
+            if !(self.alpha_to_trie_map).is_null() {
+                free(self.alpha_to_trie_map as *mut libc::c_void);
             }
-            if !((*self).trie_to_alpha_map).is_null() {
-                free((*self).trie_to_alpha_map as *mut libc::c_void);
+            if !(self.trie_to_alpha_map).is_null() {
+                free(self.trie_to_alpha_map as *mut libc::c_void);
             }
             // free(alpha_map as *mut libc::c_void);
         }
     }
 }
 impl AlphaMap {
-    pub unsafe fn fread_bin(mut file: *mut FILE) -> DatrieResult<AlphaMap> {
-        let mut current_block: u64;
+    pub unsafe fn fread_bin(file: *mut FILE) -> DatrieResult<AlphaMap> {
+        let current_block: u64;
         let mut save_pos: libc::c_long = 0;
         let mut sig: uint32 = 0;
         let mut total: int32 = 0;
@@ -171,10 +172,10 @@ impl AlphaMap {
         {
             alpha_map = AlphaMap::new();
             // if !(alpha_map.is_null() as libc::c_int as libc::c_long != 0) {
-            if !(file_read_int32(file, &mut total) as u64 == 0) {
+            if file_read_int32(file, &mut total) as u64 != 0 {
                 i = 0 as libc::c_int;
                 loop {
-                    if !(i < total) {
+                    if i >= total {
                         current_block = 1917311967535052937;
                         break;
                     }
@@ -192,9 +193,8 @@ impl AlphaMap {
                 match current_block {
                     10306619946931033911 => {}
                     _ => {
-                        if !((alpha_map_recalc_work_area(&mut alpha_map) != 0 as libc::c_int)
-                            as libc::c_int as libc::c_long
-                            != 0)
+                        if (alpha_map_recalc_work_area(&mut alpha_map) != 0 as libc::c_int)
+                            as libc::c_int as libc::c_long == 0
                         {
                             return Ok(alpha_map);
                         }
@@ -205,14 +205,14 @@ impl AlphaMap {
             // }
         }
         fseek(file, save_pos, 0 as libc::c_int);
-        return Err(DatrieError::new(
+        Err(DatrieError::new(
             ErrorKind::Io,
             "failed to load file".into(),
-        ));
+        ))
         // return 0 as *mut AlphaMap;
     }
     pub fn fread_bin_safe<R: ReadSeekExt>(reader: &mut R) -> DatrieResult<AlphaMap> {
-        let save_pos = reader.seek(SeekFrom::Current(0))?;
+        let save_pos = reader.stream_position()?;
         AlphaMap::do_fread_bin_safe(reader).map_err(|err| {
             if let Err(io_err) = reader.seek(SeekFrom::Start(save_pos)) {
                 return io_err.into();
@@ -269,7 +269,7 @@ impl AlphaMap {
 }
 
 pub unsafe fn alpha_map_fwrite_bin(alpha_map: *const AlphaMap, file: *mut FILE) -> libc::c_int {
-    let mut range: *mut AlphaRange = 0 as *mut AlphaRange;
+    let mut range: *mut AlphaRange = std::ptr::null_mut::<AlphaRange>();
     if file_write_int32(file, 0xd9fcd9fc as libc::c_uint as int32) as u64 == 0
         || file_write_int32(file, AlphaMap::get_total_ranges(&*alpha_map) as i32) as u64 == 0
     {
@@ -284,15 +284,15 @@ pub unsafe fn alpha_map_fwrite_bin(alpha_map: *const AlphaMap, file: *mut FILE) 
         }
         range = (*range).next;
     }
-    return 0 as libc::c_int;
+    0 as libc::c_int
 }
 impl AlphaMap {
     const SIGNATURE_SIZE: usize = 4;
     pub fn get_serialized_size(&self) -> usize {
         let ranges_count = self.get_total_ranges();
-        return Self::SIGNATURE_SIZE
+        Self::SIGNATURE_SIZE
             + ::core::mem::size_of::<int32>()
-            + (::core::mem::size_of::<AlphaChar>() * 2 * ranges_count);
+            + (::core::mem::size_of::<AlphaChar>() * 2 * ranges_count)
     }
     fn get_total_ranges(&self) -> usize {
         let mut n = 0;
@@ -301,7 +301,7 @@ impl AlphaMap {
             n += 1;
             range = unsafe { (*range).next };
         }
-        return n;
+        n
     }
     const SIGNATURE: u32 = 0xd9fcd9fc;
     pub fn serialize(&self, buf: &mut dyn std::io::Write) -> DatrieResult<()> {
@@ -342,9 +342,9 @@ impl AlphaMap2 {
     const SIGNATURE_SIZE: usize = 4;
     pub fn get_serialized_size(&self) -> usize {
         let ranges_count = self.get_total_ranges();
-        return Self::SIGNATURE_SIZE
+        Self::SIGNATURE_SIZE
             + ::core::mem::size_of::<i32>()
-            + (::core::mem::size_of::<AlphaChar>() * 2 * ranges_count);
+            + (::core::mem::size_of::<AlphaChar>() * 2 * ranges_count)
     }
     fn get_total_ranges(&self) -> usize {
         self.ranges.len()
@@ -361,20 +361,20 @@ pub unsafe fn alpha_map_serialize_bin(alpha_map: *const AlphaMap, ptr: *mut *mut
     }
 }
 unsafe fn alpha_map_add_range_only(
-    mut alpha_map: *mut AlphaMap,
-    mut begin: AlphaChar,
-    mut end: AlphaChar,
+    alpha_map: *mut AlphaMap,
+    begin: AlphaChar,
+    end: AlphaChar,
 ) -> libc::c_int {
-    let mut q: *mut AlphaRange = 0 as *mut AlphaRange;
-    let mut r: *mut AlphaRange = 0 as *mut AlphaRange;
-    let mut begin_node: *mut AlphaRange = 0 as *mut AlphaRange;
-    let mut end_node: *mut AlphaRange = 0 as *mut AlphaRange;
+    let mut q: *mut AlphaRange = std::ptr::null_mut::<AlphaRange>();
+    let mut r: *mut AlphaRange = std::ptr::null_mut::<AlphaRange>();
+    let mut begin_node: *mut AlphaRange = std::ptr::null_mut::<AlphaRange>();
+    let mut end_node: *mut AlphaRange = std::ptr::null_mut::<AlphaRange>();
     if begin > end {
         return -(1 as libc::c_int);
     }
-    end_node = 0 as *mut AlphaRange;
+    end_node = std::ptr::null_mut::<AlphaRange>();
     begin_node = end_node;
-    q = 0 as *mut AlphaRange;
+    q = std::ptr::null_mut::<AlphaRange>();
     r = (*alpha_map).first_range;
     while !r.is_null() && (*r).begin <= begin {
         if begin <= (*r).end {
@@ -467,7 +467,7 @@ unsafe fn alpha_map_add_range_only(
             free(end_node as *mut libc::c_void);
         }
     } else if begin_node.is_null() && end_node.is_null() {
-        let mut range: *mut AlphaRange =
+        let range: *mut AlphaRange =
             malloc(::core::mem::size_of::<AlphaRange>() as libc::c_ulong) as *mut AlphaRange;
         if range.is_null() as libc::c_int as libc::c_long != 0 {
             return -(1 as libc::c_int);
@@ -481,18 +481,18 @@ unsafe fn alpha_map_add_range_only(
         }
         (*range).next = r;
     }
-    return 0 as libc::c_int;
+    0 as libc::c_int
 }
 unsafe fn alpha_map_recalc_work_area(alpha_map: *mut AlphaMap) -> libc::c_int {
-    let mut current_block: u64;
-    let mut range: *mut AlphaRange = 0 as *mut AlphaRange;
+    let current_block: u64;
+    let mut range: *mut AlphaRange = std::ptr::null_mut::<AlphaRange>();
     if !((*alpha_map).alpha_to_trie_map).is_null() {
         free((*alpha_map).alpha_to_trie_map as *mut libc::c_void);
-        (*alpha_map).alpha_to_trie_map = 0 as *mut TrieIndex;
+        (*alpha_map).alpha_to_trie_map = std::ptr::null_mut::<TrieIndex>();
     }
     if !((*alpha_map).trie_to_alpha_map).is_null() {
         free((*alpha_map).trie_to_alpha_map as *mut libc::c_void);
-        (*alpha_map).trie_to_alpha_map = 0 as *mut AlphaChar;
+        (*alpha_map).trie_to_alpha_map = std::ptr::null_mut::<AlphaChar>();
     }
     range = (*alpha_map).first_range;
     if !range.is_null() {
@@ -545,7 +545,7 @@ unsafe fn alpha_map_recalc_work_area(alpha_map: *mut AlphaMap) -> libc::c_int {
             ) as *mut AlphaChar;
             if ((*alpha_map).trie_to_alpha_map).is_null() as libc::c_int as libc::c_long != 0 {
                 free((*alpha_map).alpha_to_trie_map as *mut libc::c_void);
-                (*alpha_map).alpha_to_trie_map = 0 as *mut TrieIndex;
+                (*alpha_map).alpha_to_trie_map = std::ptr::null_mut::<TrieIndex>();
                 current_block = 12045534306736471162;
             } else {
                 trie_char = 0 as libc::c_int;
@@ -566,7 +566,7 @@ unsafe fn alpha_map_recalc_work_area(alpha_map: *mut AlphaMap) -> libc::c_int {
                 }
                 while trie_char < n_trie {
                     let fresh0 = trie_char;
-                    trie_char = trie_char + 1;
+                    trie_char += 1;
                     *((*alpha_map).trie_to_alpha_map).offset(fresh0 as isize) =
                         !(0 as libc::c_int as AlphaChar);
                     dbg!(*((*alpha_map).trie_to_alpha_map).offset(fresh0 as isize));
@@ -581,7 +581,7 @@ unsafe fn alpha_map_recalc_work_area(alpha_map: *mut AlphaMap) -> libc::c_int {
             _ => return -(1 as libc::c_int),
         }
     }
-    return 0 as libc::c_int;
+    0 as libc::c_int
 }
 
 // pub unsafe fn alpha_map_add_range(
@@ -660,13 +660,13 @@ impl AlphaMap2 {
                 if let Some(mut prev_range) = range_opt.take() {
                     if prev_range.end + 1 < range.begin {
                         new_ranges.push(prev_range);
-                        range_opt = Some(range.clone());
+                        range_opt = Some(*range);
                     } else {
                         prev_range.end = range.end;
                         range_opt = Some(prev_range);
                     }
                 } else {
-                    range_opt = Some(range.clone());
+                    range_opt = Some(*range);
                 }
             }
             if let Some(range) = range_opt.take() {
@@ -737,38 +737,38 @@ pub unsafe fn alpha_map_char_to_trie(alpha_map: *const AlphaMap, ac: AlphaChar) 
         return *((*alpha_map).alpha_to_trie_map)
             .offset(ac.wrapping_sub(alpha_begin as libc::c_uint) as isize);
     }
-    return 0x7fffffff as libc::c_int;
+    0x7fffffff as libc::c_int
 }
 
 pub unsafe fn alpha_map_trie_to_char(
-    mut alpha_map: *const AlphaMap,
-    mut tc: TrieChar,
+    alpha_map: *const AlphaMap,
+    tc: TrieChar,
 ) -> AlphaChar {
     if (tc as libc::c_int) < (*alpha_map).trie_map_sz {
         return *((*alpha_map).trie_to_alpha_map).offset(tc as isize);
     }
-    return !(0 as libc::c_int as AlphaChar);
+    !(0 as libc::c_int as AlphaChar)
 }
 
 pub unsafe fn alpha_map_char_to_trie_str(
-    mut alpha_map: *const AlphaMap,
+    alpha_map: *const AlphaMap,
     mut str: *const AlphaChar,
 ) -> *mut TrieChar {
-    let mut current_block: u64;
-    let mut trie_str: *mut TrieChar = 0 as *mut TrieChar;
-    let mut p: *mut TrieChar = 0 as *mut TrieChar;
+    let current_block: u64;
+    let mut trie_str: *mut TrieChar = std::ptr::null_mut::<TrieChar>();
+    let mut p: *mut TrieChar = std::ptr::null_mut::<TrieChar>();
     trie_str =
         malloc((alpha_char_strlen(str) + 1 as libc::c_int) as libc::c_ulong) as *mut TrieChar;
     if trie_str.is_null() as libc::c_int as libc::c_long != 0 {
-        return 0 as *mut TrieChar;
+        return std::ptr::null_mut::<TrieChar>();
     }
     p = trie_str;
     loop {
-        if !(*str != 0) {
+        if *str == 0 {
             current_block = 4906268039856690917;
             break;
         }
-        let mut tc: TrieIndex = alpha_map_char_to_trie(alpha_map, *str);
+        let tc: TrieIndex = alpha_map_char_to_trie(alpha_map, *str);
         if 0x7fffffff as libc::c_int == tc {
             current_block = 13430631152357385211;
             break;
@@ -780,28 +780,28 @@ pub unsafe fn alpha_map_char_to_trie_str(
     match current_block {
         13430631152357385211 => {
             free(trie_str as *mut libc::c_void);
-            return 0 as *mut TrieChar;
+            std::ptr::null_mut::<TrieChar>()
         }
         _ => {
             *p = '\0' as i32 as TrieChar;
-            return trie_str;
+            trie_str
         }
-    };
+    }
 }
 
 pub unsafe fn alpha_map_trie_to_char_str(
     alpha_map: *const AlphaMap,
     mut str: *const TrieChar,
 ) -> *mut AlphaChar {
-    let mut alpha_str: *mut AlphaChar = 0 as *mut AlphaChar;
-    let mut p: *mut AlphaChar = 0 as *mut AlphaChar;
+    let mut alpha_str: *mut AlphaChar = std::ptr::null_mut::<AlphaChar>();
+    let mut p: *mut AlphaChar = std::ptr::null_mut::<AlphaChar>();
     alpha_str = malloc(
         (trie_char_strlen(str) as u64)
             .wrapping_add(1 as libc::c_int as libc::c_ulong)
             .wrapping_mul(::core::mem::size_of::<AlphaChar>() as libc::c_ulong),
     ) as *mut AlphaChar;
     if alpha_str.is_null() as libc::c_int as libc::c_long != 0 {
-        return 0 as *mut AlphaChar;
+        return std::ptr::null_mut::<AlphaChar>();
     }
     p = alpha_str;
     while *str != 0 {
@@ -810,7 +810,7 @@ pub unsafe fn alpha_map_trie_to_char_str(
         str = str.offset(1);
     }
     *p = 0 as libc::c_int as AlphaChar;
-    return alpha_str;
+    alpha_str
 }
 
 #[cfg(test)]

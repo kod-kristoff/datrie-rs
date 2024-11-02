@@ -248,15 +248,15 @@ fn test_walk() -> DatrieResult<()> {
         assert_eq!(2, n, "Walkable chars should be exactly 2, got {}\n", n);
         //         is_failed = TRUE;
         //     }
-        if (!is_walkables_include('o' as AlphaChar, walkables.as_ptr(), n as usize)) {
+        if !is_walkables_include('o' as AlphaChar, walkables.as_ptr(), n as usize) {
             println!("Walkable chars do not include 'o'");
             is_failed = true;
         }
-        if (!is_walkables_include('r' as AlphaChar, walkables.as_ptr(), n as usize)) {
+        if !is_walkables_include('r' as AlphaChar, walkables.as_ptr(), n as usize) {
             println!("Walkable chars do not include 'r'");
             is_failed = true;
         }
-        if (is_failed) {
+        if is_failed {
             print!("Walkables = ");
             print_walkables(walkables.as_ptr(), n as usize);
             println!();
@@ -342,21 +342,21 @@ fn test_walk() -> DatrieResult<()> {
         //         is_failed = TRUE;
         //     }
         if !is_walkables_include('e' as AlphaChar, walkables.as_ptr(), n as usize) {
-            print!("Walkable chars do not include 'e'\n");
+            println!("Walkable chars do not include 'e'");
             is_failed = true;
         }
         if !is_walkables_include('i' as AlphaChar, walkables.as_ptr(), n as usize) {
-            print!("Walkable chars do not include 'i'\n");
+            println!("Walkable chars do not include 'i'");
             is_failed = true;
         }
         if !is_walkables_include('o' as AlphaChar, walkables.as_ptr(), n as usize) {
-            print!("Walkable chars do not include 'o'\n");
+            println!("Walkable chars do not include 'o'");
             is_failed = true;
         }
-        if (is_failed) {
+        if is_failed {
             print!("Walkables = ");
             print_walkables(walkables.as_ptr(), n as usize);
-            print!("\n");
+            println!();
             //         goto err_TrieState::t_created;
         }
 
@@ -431,17 +431,17 @@ fn test_walk() -> DatrieResult<()> {
         //         is_failed = TRUE;
         //     }
         if !is_walkables_include('p' as AlphaChar, walkables.as_ptr(), n as usize) {
-            print!("Walkable chars do not include 'p'\n");
+            println!("Walkable chars do not include 'p'");
             is_failed = true;
         }
         if !is_walkables_include('v' as AlphaChar, walkables.as_ptr(), n as usize) {
-            print!("Walkable chars do not include 'v'\n");
+            println!("Walkable chars do not include 'v'");
             is_failed = true;
         }
-        if (is_failed) {
+        if is_failed {
             print!("Walkables = ");
             print_walkables(walkables.as_ptr(), n as usize);
-            print!("\n");
+            println!();
             //         goto err_TrieState::u_created;
         }
 
@@ -578,17 +578,17 @@ fn test_walk() -> DatrieResult<()> {
         //         is_failed = TRUE;
         //     }
         if !is_walkables_include('d' as AlphaChar, walkables.as_ptr(), n as usize) {
-            print!("Walkable chars do not include 'd'\n");
+            println!("Walkable chars do not include 'd'");
             is_failed = true;
         }
         if !is_walkables_include('g' as AlphaChar, walkables.as_ptr(), n as usize) {
-            print!("Walkable chars do not include 'g'\n");
+            println!("Walkable chars do not include 'g'");
             is_failed = true;
         }
-        if (is_failed) {
+        if is_failed {
             print!("Walkables = ");
             print_walkables(walkables.as_ptr(), n as usize);
-            print!("\n");
+            println!();
             //         goto err_TrieState::t_created;
         }
 

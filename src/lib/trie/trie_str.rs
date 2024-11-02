@@ -1,4 +1,3 @@
-use core::slice;
 
 pub type TrieChar = u8;
 

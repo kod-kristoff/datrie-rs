@@ -1,4 +1,4 @@
-use datrie::trie::{Trie, TrieIterator, TrieState};
+use datrie::trie::{TrieIterator, TrieState};
 
 /*
  * libdatrie - Double-Array Trie Library
@@ -40,7 +40,7 @@ fn test_null_trie() {
 
         /* iterate & check */
         msg_step("Iterating");
-        let mut trie_root_state = test_trie.root();
+        let trie_root_state = test_trie.root();
         // dbg!(&trie_root_state as *const TrieState);
         dbg!(trie_root_state);
         // dbg!(&trie_root_state.trie);

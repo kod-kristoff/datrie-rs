@@ -18,13 +18,13 @@ pub type TrieIndex = int32;
 pub const DA_OK: libc::c_int = 0;
 pub const DA_ERR: libc::c_int = -1;
 #[no_mangle]
-pub unsafe extern "C" fn alpha_char_strlen(mut str: *const AlphaChar) -> libc::c_int {
-    let mut p: *const AlphaChar = 0 as *const AlphaChar;
+pub unsafe extern "C" fn alpha_char_strlen(str: *const AlphaChar) -> libc::c_int {
+    let mut p: *const AlphaChar = std::ptr::null::<AlphaChar>();
     p = str;
     while *p != 0 {
         p = p.offset(1);
     }
-    return p.offset_from(str) as libc::c_long as libc::c_int;
+    p.offset_from(str) as libc::c_long as libc::c_int
 }
 #[no_mangle]
 pub unsafe extern "C" fn alpha_char_strcmp(
@@ -41,24 +41,24 @@ pub unsafe extern "C" fn alpha_char_strcmp(
     if *str1 > *str2 {
         return 1 as libc::c_int;
     }
-    return 0 as libc::c_int;
+    0 as libc::c_int
 }
 #[no_mangle]
 pub unsafe extern "C" fn alpha_map_new() -> *mut AlphaMap {
     let alpha_map = AlphaMap::new();
-    return Box::into_raw(Box::new(alpha_map));
+    Box::into_raw(Box::new(alpha_map))
 }
 #[no_mangle]
-pub unsafe extern "C" fn alpha_map_clone(mut a_map: *const AlphaMap) -> *mut AlphaMap {
+pub unsafe extern "C" fn alpha_map_clone(a_map: *const AlphaMap) -> *mut AlphaMap {
     if a_map.is_null() {
         return std::ptr::null_mut();
     }
     let a_map = unsafe { &*a_map };
     let alpha_map = a_map.clone();
-    return Box::into_raw(Box::new(alpha_map));
+    Box::into_raw(Box::new(alpha_map))
 }
 #[no_mangle]
-pub unsafe extern "C" fn alpha_map_free(mut alpha_map: *mut AlphaMap) {
+pub unsafe extern "C" fn alpha_map_free(alpha_map: *mut AlphaMap) {
     if alpha_map.is_null() {
         return;
     }
@@ -66,9 +66,9 @@ pub unsafe extern "C" fn alpha_map_free(mut alpha_map: *mut AlphaMap) {
 }
 #[no_mangle]
 pub unsafe extern "C" fn alpha_map_add_range(
-    mut alpha_map: *mut AlphaMap,
-    mut begin: AlphaChar,
-    mut end: AlphaChar,
+    alpha_map: *mut AlphaMap,
+    begin: AlphaChar,
+    end: AlphaChar,
 ) -> libc::c_int {
     if alpha_map.is_null() {
         return DA_OK;

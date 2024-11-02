@@ -222,14 +222,14 @@ fn serialize_works() -> DatrieResult<()> {
     let mut alpha_map = AlphaMap::new();
     alpha_map.add_range(0x00, 0xff)?;
     let size = alpha_map.get_serialized_size();
-    let buf: Vec<u8> = Vec::with_capacity(size as usize);
+    let buf: Vec<u8> = Vec::with_capacity(size);
     let mut buf = std::mem::ManuallyDrop::new(buf);
     let mut serialized_data = buf.as_mut_ptr();
     let buf_cap = buf.capacity();
     unsafe {
         alpha_map_serialize_bin(&alpha_map, &mut serialized_data);
     }
-    let serialized_data = unsafe { Vec::from_raw_parts(serialized_data, size as usize, buf_cap) };
+    let serialized_data = unsafe { Vec::from_raw_parts(serialized_data, size, buf_cap) };
     let mut serialized_self_data = Vec::with_capacity(size);
     alpha_map.serialize(&mut serialized_self_data)?;
     assert_eq!(serialized_data, serialized_self_data);

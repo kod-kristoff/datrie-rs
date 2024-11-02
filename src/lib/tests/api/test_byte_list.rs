@@ -61,7 +61,7 @@ unsafe fn dump_key_data(key: *const AlphaChar, data: TrieData) {
         print!("{}", *p);
         p = p.offset(1);
     }
-    print!("] : {}\n", data);
+    println!("] : {}", data);
 }
 
 unsafe fn dump_entry(iter: *const TrieIterator) {
@@ -80,14 +80,14 @@ unsafe fn validate_entry(source: &mut [DictEntry], iter: *const TrieIterator) ->
     let data = TrieIterator::get_data(iter);
 
     for dict_p in source {
-        if (alpha_char_strcmp(dict_p.key.as_ptr(), key) == 0 && dict_p.data == data) {
+        if alpha_char_strcmp(dict_p.key.as_ptr(), key) == 0 && dict_p.data == data {
             dict_p.is_checked = true;
             free(key as *mut libc::c_void);
             return true;
         }
     }
     free(key as *mut libc::c_void);
-    return false;
+    false
 }
 
 /*
@@ -97,7 +97,7 @@ unsafe fn validate_entry(source: &mut [DictEntry], iter: *const TrieIterator) ->
 fn is_all_checked(source: &[DictEntry]) -> bool {
     let mut ret = true;
     for dict_p in source {
-        if (!dict_p.is_checked) {
+        if !dict_p.is_checked {
             print!("Not visited Source entry: ");
             unsafe {
                 dump_key_data(dict_p.key.as_ptr(), dict_p.data);
@@ -106,7 +106,7 @@ fn is_all_checked(source: &[DictEntry]) -> bool {
         }
     }
 
-    return ret;
+    ret
 }
 
 use datrie::{
@@ -131,7 +131,7 @@ fn test_byte_list() -> DatrieResult<()> {
         let mut test_trie = Trie::new(&alpha_map)?;
 
         msg_step("Storing entries to test trie");
-        let mut source = SOURCE.clone();
+        let mut source = SOURCE;
         for dict_p in &source {
             if Trie::store(&mut test_trie, dict_p.key.as_ptr(), dict_p.data) == 0 {
                 panic!(
@@ -146,8 +146,8 @@ fn test_byte_list() -> DatrieResult<()> {
         let iter = TrieIterator::new(root);
         assert!(!iter.is_null());
         while TrieIterator::next(iter) != DA_FALSE {
-            if (!validate_entry(&mut source, iter)) {
-                print!("Fail to validate trie entry:\n");
+            if !validate_entry(&mut source, iter) {
+                println!("Fail to validate trie entry:");
                 dump_entry(iter);
             }
         }
