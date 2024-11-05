@@ -56,8 +56,8 @@ fn test_serialization() -> DatrieResult<()> {
         let _ = fs::remove_file(TRIE_FILENAME); /* error ignored */
         let trie_filename = CString::new(TRIE_FILENAME).unwrap();
         assert_eq!(
-            Trie::save(&mut test_trie, trie_filename.as_ptr()),
-            0,
+            test_trie.save(trie_filename.as_ref()),
+            Ok(()),
             "Failed to save trie to file '{}'.\n",
             TRIE_FILENAME
         );
@@ -66,14 +66,12 @@ fn test_serialization() -> DatrieResult<()> {
         let size = test_trie.get_serialized_size();
         println!("serialized trie size {}\n", size);
         msg_step("Allocating");
-        let buf: Vec<u8> = Vec::with_capacity(size as usize);
+        let mut buf: Vec<u8> = Vec::with_capacity(size as usize);
         msg_step("Serializing");
-        let mut buf = std::mem::ManuallyDrop::new(buf);
-        let trie_serialized_data = buf.as_mut_ptr();
-        let buf_cap = buf.capacity();
-        Trie::serialize(&mut test_trie, trie_serialized_data);
-        let trie_serialized_data =
-            Vec::from_raw_parts(trie_serialized_data, size as usize, buf_cap);
+        // let mut buf = std::mem::ManuallyDrop::new(buf);
+        test_trie.serialize_safe(&mut buf).unwrap();
+
+        //     Vec::from_raw_parts(trie_serialized_data, size as usize, buf_cap);
         msg_step("Serialized");
 
         let mut f = fs::File::open(TRIE_FILENAME)?;
@@ -92,7 +90,7 @@ fn test_serialization() -> DatrieResult<()> {
             "Failed to read back the serialized trie file.\n"
         );
         assert_eq!(
-            trie_serialized_data, trie_file_data,
+            buf, trie_file_data,
             "Trie serialized data doesn't match contents of the file.\n"
         );
     }

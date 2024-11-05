@@ -96,8 +96,8 @@ fn test_file() -> DatrieResult<()> {
         let _ = fs::remove_file(TRIE_FILENAME); /* error ignored */
         let trie_filename = CString::new(TRIE_FILENAME).unwrap();
         assert_eq!(
-            Trie::save(&mut test_trie, trie_filename.as_ptr()),
-            0,
+            test_trie.save(trie_filename.as_ref()),
+            Ok(()),
             "Failed to save trie to file '{}'.\n",
             TRIE_FILENAME
         );
