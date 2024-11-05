@@ -12,7 +12,7 @@
 ;   Call un.ReplaceLine
 ;-----------------------
 Function un.ReplaceLine
- 
+
  Pop $7
  Pop $8
  Pop $9
@@ -30,14 +30,14 @@ loop:
    StrCpy $2 "$7"          ; change line
    FileWrite $1 $2                             ; write changed or unchanged line to temp file
    Goto loop
- 
+
 done:
    FileClose $0                                ; close target file
    FileClose $1                                ; close temp file
    Delete $9                            ; delete target file
    CopyFiles /SILENT $R0 $9            ; copy temp file to target file
    Delete $R0                                  ; delete temp file
-   
+
 FunctionEnd
 
 ;---------
@@ -48,17 +48,17 @@ FunctionEnd
 ; parameter description
 ; $9 is filename to search
 ; $8 is string to search and delete
-; 
+;
 ;------------------------
 ; How to call function:
-;   
+;
 ;   Push "filename.txt"
 ;   Push "the string to search and delete"
 ;   Call un.DeleteLine
 ;
 ;-----------------------
 Function un.DeleteLine
- 
+
  Pop $8
  Pop $9
 
@@ -73,14 +73,14 @@ loop:
    StrCmp $2 "$8" loop 0          ; if search string is found at the end of the file, goto loop
    FileWrite $1 $2                             ; write changed or unchanged line to temp file
    Goto loop
- 
+
 done:
    FileClose $0                                ; close target file
    FileClose $1                                ; close temp file
    Delete $9                            ; delete target file
    CopyFiles /SILENT $R0 $9            ; copy temp file to target file
    Delete $R0                                  ; delete temp file
-   
+
 FunctionEnd
 
 ;---------

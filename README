@@ -1,7 +1,7 @@
 datrie - Double-Array Trie Library
 ==================================
 
-This is an implementation of double-array structure for representing trie, 
+This is an implementation of double-array structure for representing trie,
 as proposed by Junichi Aoe [1].
 
 Trie is a kind of digital search tree, an efficient indexing method in which
@@ -24,8 +24,8 @@ September 2006.
 References
 ----------
 
-[1] Aoe, J. "An Efficient Digital Search Algorithm by Using a Double-Array 
-    Structure". IEEE Transactions on Software Engineering. Vol. 15, 9 
+[1] Aoe, J. "An Efficient Digital Search Algorithm by Using a Double-Array
+    Structure". IEEE Transactions on Software Engineering. Vol. 15, 9
     (Sep 1989). pp. 1066-1077.
 
 [2] Karoonboonyanan, T. "An Implementation of Double-Array Trie".
