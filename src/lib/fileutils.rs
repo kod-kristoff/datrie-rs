@@ -65,14 +65,18 @@ impl io::Read for CFile {
 
 impl io::Write for CFile {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        let bytes_written = unsafe {
-            libc::fwrite(
-                buf.as_ptr() as *mut libc::c_void,
-                ::core::mem::size_of::<u8>(),
-                buf.len(),
-                self.file,
-            )
-        };
+        let mut bytes_written = 0;
+        while bytes_written < buf.len() {
+            let result = unsafe {
+                libc::fwrite(
+                    buf.as_ptr() as *mut libc::c_void,
+                    ::core::mem::size_of::<u8>(),
+                    buf.len(),
+                    self.file,
+                )
+            };
+            bytes_written += result;
+        }
         Ok(bytes_written)
     }
     fn flush(&mut self) -> io::Result<()> {
