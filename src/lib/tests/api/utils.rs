@@ -88,7 +88,7 @@ pub fn msg_step(msg: &str) {
 //  *  Trie creation helpers  *
 //  *-------------------------*/
 pub fn en_alpha_map_new() -> DatrieResult<AlphaMap> {
-    let mut en_map = AlphaMap::new();
+    let mut en_map = AlphaMap::default();
     en_map.add_range(0x0061, 0x007a)?;
 
     Ok(en_map)

@@ -19,8 +19,8 @@ pub struct DString {
 }
 #[no_mangle]
 pub unsafe extern "C" fn dstring_new(char_size: libc::c_int, n_elm: libc::c_int) -> *mut DString {
-    let mut ds: *mut DString = std::ptr::null_mut::<DString>();
-    ds = malloc(::core::mem::size_of::<DString>() as libc::c_ulong) as *mut DString;
+    let ds: *mut DString =
+        malloc(::core::mem::size_of::<DString>() as libc::c_ulong) as *mut DString;
     if ds.is_null() as libc::c_int as libc::c_long != 0 {
         return std::ptr::null_mut::<DString>();
     }

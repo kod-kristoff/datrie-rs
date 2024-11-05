@@ -1,8 +1,8 @@
 !ifndef _WriteEnvStr_nsh
 !define _WriteEnvStr_nsh
- 
+
 !include WinMessages.nsh
- 
+
 !ifndef WriteEnvStr_RegKey
   !ifdef ALL_USERS
     !define WriteEnvStr_RegKey \
@@ -11,7 +11,7 @@
     !define WriteEnvStr_RegKey 'HKCU "Environment"'
   !endif
 !endif
- 
+
 #
 # WriteEnvStr - Writes an environment variable
 # Note: Win9x systems requires reboot
@@ -26,7 +26,7 @@ Function WriteEnvStr
   Exch
   Exch $0 ; $0 has environment variable name
   Push $2
- 
+
   Call IsNT
   Pop $2
   StrCmp $2 1 WriteEnvStr_NT
@@ -38,18 +38,18 @@ Function WriteEnvStr
     FileClose $2
     SetRebootFlag true
     Goto WriteEnvStr_done
- 
+
   WriteEnvStr_NT:
       WriteRegExpandStr ${WriteEnvStr_RegKey} $0 $1
       SendMessage ${HWND_BROADCAST} ${WM_WININICHANGE} \
         0 "STR:Environment" /TIMEOUT=5000
- 
+
   WriteEnvStr_done:
     Pop $2
     Pop $0
     Pop $1
 FunctionEnd
- 
+
 #
 # un.DeleteEnvStr - Removes an environment variable
 # Note: Win9x systems requires reboot
@@ -65,7 +65,7 @@ Function un.DeleteEnvStr
   Push $3
   Push $4
   Push $5
- 
+
   Call un.IsNT
   Pop $1
   StrCmp $1 1 DeleteEnvStr_NT
@@ -76,7 +76,7 @@ Function un.DeleteEnvStr
     FileOpen $2 $4 w
     StrCpy $0 "SET $0="
     SetRebootFlag true
- 
+
     DeleteEnvStr_dosLoop:
       FileRead $1 $3
       StrLen $5 $0
@@ -85,7 +85,7 @@ Function un.DeleteEnvStr
       StrCmp $5 "" DeleteEnvStr_dosLoopEnd
       FileWrite $2 $3
       Goto DeleteEnvStr_dosLoop
- 
+
     DeleteEnvStr_dosLoopEnd:
       FileClose $2
       FileClose $1
@@ -94,12 +94,12 @@ Function un.DeleteEnvStr
       CopyFiles /SILENT $4 "$1\autoexec.bat"
       Delete $4
       Goto DeleteEnvStr_done
- 
+
   DeleteEnvStr_NT:
     DeleteRegValue ${WriteEnvStr_RegKey} $0
     SendMessage ${HWND_BROADCAST} ${WM_WININICHANGE} \
       0 "STR:Environment" /TIMEOUT=5000
- 
+
   DeleteEnvStr_done:
     Pop $5
     Pop $4
@@ -108,10 +108,10 @@ Function un.DeleteEnvStr
     Pop $1
     Pop $0
 FunctionEnd
- 
+
 !ifndef IsNT_KiCHiK
 !define IsNT_KiCHiK
- 
+
 #
 # [un.]IsNT - Pushes 1 if running on NT, 0 if not
 #
@@ -133,7 +133,7 @@ Function ${UN}IsNT
   Pop $0
   Push 0
   Return
- 
+
   IsNT_yes:
     ; NT!!!
     Pop $0
@@ -142,8 +142,8 @@ FunctionEnd
 !macroend
 !insertmacro IsNT ""
 !insertmacro IsNT "un."
- 
+
 !endif ; IsNT_KiCHiK
- 
+
 !endif ; _WriteEnvStr_nsh
 

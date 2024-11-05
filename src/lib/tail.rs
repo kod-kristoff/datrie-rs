@@ -9,20 +9,13 @@ use crate::{
     DatrieResult,
 };
 
-pub type size_t = libc::c_ulong;
-pub type __off_t = libc::c_long;
-pub type __off64_t = libc::c_long;
 pub type FILE = libc::FILE;
 pub type Bool = libc::c_uint;
 pub const DA_TRUE: Bool = 1;
 pub const DA_FALSE: Bool = 0;
-pub type uint8 = libc::c_uchar;
-pub type int16 = libc::c_short;
-pub type uint32 = libc::c_uint;
-pub type int32 = libc::c_int;
-pub type TrieChar = libc::c_uchar;
-pub type TrieIndex = int32;
-pub type TrieData = int32;
+pub type TrieChar = u8;
+pub type TrieIndex = i32;
+pub type TrieData = i32;
 #[derive(Clone, Debug)]
 pub struct Tail {
     tails2: Vec<TailBlock>,
@@ -78,7 +71,7 @@ impl Tail {
     }
     fn do_fread_safe<R: ReadExt>(reader: &mut R) -> DatrieResult<Tail> {
         let current_block: u64;
-        let mut sig: uint32 = 0;
+        let mut sig: u32 = 0;
         reader.read_uint32(&mut sig)?;
         if sig != Self::SIGNATURE {
             return Err(DatrieError::new(
@@ -106,7 +99,7 @@ impl Tail {
                 current_block = 15904375183555213903;
                 break;
             }
-            let mut length: int16 = 0;
+            let mut length: i16 = 0;
             let mut next_free = 0;
             let mut data = 0;
             // reader.read_int32(&mut next_free)?;
@@ -170,11 +163,10 @@ impl Tail {
     }
 
     pub fn get_serialized_size(&self) -> usize {
-        let static_count =
-            ::core::mem::size_of::<int32>() + 2 * ::core::mem::size_of::<TrieIndex>();
+        let static_count = ::core::mem::size_of::<i32>() + 2 * ::core::mem::size_of::<TrieIndex>();
         let mut dynamic_count: usize = 0;
         if self.num_tails() > 0 {
-            dynamic_count += (size_of::<TrieIndex>() + size_of::<TrieData>() + size_of::<int16>())
+            dynamic_count += (size_of::<TrieIndex>() + size_of::<TrieData>() + size_of::<i16>())
                 * self.num_tails();
             for i in 0..(self.num_tails()) {
                 dynamic_count += self.tails2[i].suffix.len();
@@ -220,7 +212,7 @@ impl Tail {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn tail_serialize(t: *const Tail, ptr: *mut *mut uint8) -> libc::c_int {
+pub unsafe extern "C" fn tail_serialize(t: *const Tail, ptr: *mut *mut u8) -> libc::c_int {
     let tail: &Tail = &*t;
     let buf: &mut [u8] = core::slice::from_raw_parts_mut(*ptr, tail.get_serialized_size());
     if tail.serialize_to_slice(buf).is_ok() {
@@ -245,7 +237,7 @@ impl Tail {
     pub unsafe fn set_suffix(&mut self, mut index: TrieIndex, suffix: *const TrieChar) -> Bool {
         index -= 1 as libc::c_int;
         if ((index as usize) < self.num_tails()) as libc::c_int as libc::c_long != 0 {
-            let mut tmp: *mut TrieChar = std::ptr::null_mut::<TrieChar>();
+            let tmp: *mut TrieChar;
             if !suffix.is_null() {
                 tmp = trie_char_strdup(suffix);
                 if tmp.is_null() as libc::c_int as libc::c_long != 0 {

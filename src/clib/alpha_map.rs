@@ -1,22 +1,14 @@
 use ::libc;
 use datrie::alpha_map::{AlphaChar, AlphaMap};
 
-pub type __off_t = libc::c_long;
-pub type __off64_t = libc::c_long;
-pub type size_t = libc::c_ulong;
-
 pub type FILE = libc::FILE;
 pub type Bool = libc::c_uint;
 pub const DA_TRUE: Bool = 1;
 pub const DA_FALSE: Bool = 0;
-pub type uint8 = libc::c_uchar;
-pub type uint32 = libc::c_uint;
-pub type int32 = libc::c_int;
-// pub type AlphaChar = uint32;
-pub type TrieChar = libc::c_uchar;
-pub type TrieIndex = int32;
+
 pub const DA_OK: libc::c_int = 0;
 pub const DA_ERR: libc::c_int = -1;
+
 #[no_mangle]
 pub unsafe extern "C" fn alpha_char_strlen(str: *const AlphaChar) -> libc::c_int {
     let mut p: *const AlphaChar = std::ptr::null::<AlphaChar>();
@@ -45,7 +37,7 @@ pub unsafe extern "C" fn alpha_char_strcmp(
 }
 #[no_mangle]
 pub unsafe extern "C" fn alpha_map_new() -> *mut AlphaMap {
-    let alpha_map = AlphaMap::new();
+    let alpha_map = AlphaMap::default();
     Box::into_raw(Box::new(alpha_map))
 }
 #[no_mangle]
