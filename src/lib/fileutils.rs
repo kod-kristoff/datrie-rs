@@ -1,5 +1,5 @@
 use byteorder::{BigEndian, ReadBytesExt};
-use std::{io, ptr};
+use std::io;
 
 pub type FILE = libc::FILE;
 pub type Bool = libc::c_uint;
