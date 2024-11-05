@@ -121,7 +121,7 @@ use crate::utils::msg_step;
 fn test_byte_list() -> DatrieResult<()> {
     unsafe {
         msg_step("Preparing alpha map");
-        let mut alpha_map = AlphaMap::new();
+        let mut alpha_map = AlphaMap::default();
         assert!(
             alpha_map.add_range(0x00, 0xff).is_ok(),
             "Fail to add full alpha map range\n"
