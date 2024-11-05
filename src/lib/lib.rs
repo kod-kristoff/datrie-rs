@@ -12,7 +12,6 @@ pub mod darray;
 pub mod dstring;
 mod error;
 pub mod fileutils;
-pub mod tail;
 pub mod trie;
 // pub mod trie_char_string;
 pub mod alpha_str;

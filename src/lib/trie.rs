@@ -7,9 +7,14 @@ use std::path::Path;
 use std::{fs, io};
 
 use crate::fileutils::{CFile, ReadExt};
-use crate::{alpha_map::*, darray::*, tail::*, AlphaStr};
+
+use crate::{alpha_map::*, darray::*, AlphaStr};
 use crate::{trie_string::*, DatrieError, DatrieResult, ErrorKind};
 use ::libc;
+
+use self::tail::Tail;
+
+mod tail;
 
 extern "C" {
     fn malloc(_: libc::c_ulong) -> *mut libc::c_void;
@@ -54,17 +59,7 @@ impl Trie {
         let alpha_map = alpha_map.clone();
         let da = Box::new(DArray::new()?);
         let tail = Box::new(Tail::new());
-        // let da = unsafe { da_new() };
-        // if da.is_null() {
-        //     return Err(DatrieError::new(ErrorKind::Memory, "malloc failed".into()));
-        // }
-        // let tail = unsafe { tail_new() };
-        // if tail.is_null() {
-        //     // unsafe {
-        //     //     da_free(da);
-        //     // }
-        //     return Err(DatrieError::new(ErrorKind::Memory, "malloc failed".into()));
-        // }
+
         Ok(Trie {
             alpha_map,
             da,
