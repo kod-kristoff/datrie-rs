@@ -8,7 +8,7 @@ use crate::{
     fileutils::{CFile, ReadExt},
     trie::TrieIndex,
     trie_string::{trie_string_append_char, trie_string_cut_last, TrieString},
-    DatrieError, DatrieResult,
+    DatrieError, DatrieResult, ErrorKind,
 };
 
 extern "C" {
@@ -231,15 +231,19 @@ impl DArray {
 
     pub unsafe fn fread(file: *mut FILE) -> DatrieResult<DArray> {
         let save_pos = ftell(file);
-        let mut cfile = CFile::new(file, false);
-        match Self::do_fread(&mut cfile) {
-            Ok(da) => Ok(da),
-            Err(err) => {
-                unsafe {
-                    libc::fseek(file, save_pos, libc::SEEK_SET);
+        let cfile = CFile::new(file, false);
+        if let Some(mut cfile) = cfile {
+            match Self::do_fread(&mut cfile) {
+                Ok(da) => Ok(da),
+                Err(err) => {
+                    unsafe {
+                        libc::fseek(file, save_pos, libc::SEEK_SET);
+                    }
+                    Err(err)
                 }
-                Err(err)
             }
+        } else {
+            Err(DatrieError::new(ErrorKind::Io, "file-ptr is null".into()))
         }
     }
     fn do_fread<R: ReadExt>(reader: &mut R) -> DatrieResult<DArray> {

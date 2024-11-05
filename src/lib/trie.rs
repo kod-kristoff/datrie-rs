@@ -75,50 +75,25 @@ impl Trie {
 
     pub unsafe fn new_from_file(path: *const libc::c_char) -> DatrieResult<Trie> {
         let trie_file = fopen(path, b"rb\0" as *const u8 as *const libc::c_char);
-        if trie_file.is_null() {
-            return Err(DatrieError::new(
+
+        let cfile = CFile::new(trie_file, true);
+        if let Some(mut cfile) = cfile {
+            let result = Trie::fread_safe(&mut cfile);
+
+            result
+        } else {
+            Err(DatrieError::new(
                 ErrorKind::Io,
                 "failed to open file".into(),
-            ));
+            ))
         }
-        let mut cfile = CFile::new(trie_file, true);
-        let result = Trie::fread_safe(&mut cfile);
-
-        result
     }
     pub fn from_path(path: &Path) -> DatrieResult<Trie> {
         let trie_file = fs::File::open(path)?;
         let mut reader = io::BufReader::new(trie_file);
         Trie::fread_safe(&mut reader)
     }
-    // pub unsafe fn fread(file: *mut FILE) -> DatrieResult<Trie> {
-    //     // let mut trie: *mut Trie = 0 as *mut Trie;
-    //     // trie = malloc(::core::mem::size_of::<Trie>() as libc::c_ulong) as *mut Trie;
-    //     // if trie.is_null() as libc::c_int as libc::c_long != 0 {
-    //     //     return 0 as *mut Trie;
-    //     // }
-    //     let alpha_map = Box::new(AlphaMap::fread_bin(file)?);
-    //     let da = Box::new(DArray::fread(file)?);
-    //     // let da = da_fread(file);
 
-    //     // if da.is_null() {
-    //     //     return Err(DatrieError::new(ErrorKind::Memory, "malloc failed".into()));
-    //     // }
-    //     let mut cfile = CFile::new(file);
-    //     let tail = Box::new(Tail::fread_safe(&mut cfile)?);
-    //     // let tail = tail_fread(file);
-    //     // if tail.is_null() {
-    //     //     // da_free(da);
-    //     //     return Err(DatrieError::new(ErrorKind::Memory, "malloc failed".into()));
-    //     // }
-
-    //     Ok(Trie {
-    //         alpha_map,
-    //         da,
-    //         tail,
-    //         is_dirty: DA_FALSE,
-    //     })
-    // }
     pub fn fread_safe<R: ReadExt + io::Seek>(reader: &mut R) -> DatrieResult<Trie> {
         let alpha_map = AlphaMap::fread_bin_safe(reader)?;
         let da = Box::new(DArray::fread_safe(reader)?);
@@ -131,58 +106,35 @@ impl Trie {
         })
     }
 }
-// pub unsafe fn free(mut trie: *mut Trie) {
-//     // drop((*trie).alpha_map.as_mut());
-//     da_free((*trie).da);
-//     tail_free((*trie).tail);
-//     free(trie as *mut libc::c_void);
-// }
-// impl Drop for Trie {
-//     fn drop(&mut self) {
-//         unsafe {
-//             // drop((*trie).alpha_map.as_mut());
-//             // da_free((*self).da);
-//             tail_free((*self).tail);
-//             // free(trie as *mut libc::c_void);
-//         }
-//     }
-// }
+
 impl Trie {
     pub unsafe fn save(&mut self, path: &CStr) -> DatrieResult<()> {
         let file: *mut FILE = fopen(path.as_ptr(), b"wb+\0" as *const u8 as *const libc::c_char);
-        if file.is_null() {
-            return Err(DatrieError::new(
+
+        let cfile = CFile::new(file, true);
+        if let Some(mut cfile) = cfile {
+            let res = self.serialize_safe(&mut cfile);
+
+            res
+        } else {
+            Err(DatrieError::new(
                 ErrorKind::Io,
                 format!("failed to open '{:?}'", path),
-            ));
+            ))
         }
-        let mut cfile = CFile::new(file, true);
-        let res = self.serialize_safe(&mut cfile);
-
-        res
     }
     pub fn save_safe(&mut self, path: &Path) -> DatrieResult<()> {
         let mut file = fs::File::create(path)?;
         self.serialize_safe(&mut file)?;
         Ok(())
     }
-    // pub unsafe fn get_serialized_size(trie: *const Trie) -> size_t {
-    //     return (alpha_map_get_serialized_size((*trie).alpha_map.as_ref()))
-    //         .wrapping_add(da_get_serialized_size((*trie).da))
-    //         .wrapping_add(tail_get_serialized_size((*trie).tail));
-    // }
+
     pub fn get_serialized_size(&self) -> usize {
         self.alpha_map.get_serialized_size()
             + self.da.get_serialized_size()
             + self.tail.get_serialized_size()
     }
-    // pub unsafe fn serialize(trie: *mut Trie, ptr: *mut u8) {
-    //     let mut ptr1: *mut u8 = ptr;
-    //     alpha_map_serialize_bin((*trie).alpha_map.as_ref(), &mut ptr1);
-    //     da_serialize((*trie).da.as_ref(), &mut ptr1);
-    //     tail_serialize((*trie).tail.as_ref(), &mut ptr1);
-    //     (*trie).is_dirty = DA_FALSE;
-    // }
+
     pub fn serialize_safe(&mut self, mut writer: impl std::io::Write) -> DatrieResult<()> {
         self.alpha_map.serialize(&mut writer)?;
         self.da.serialize(&mut writer)?;
@@ -197,27 +149,11 @@ impl Trie {
         self.is_dirty = DA_FALSE;
         Ok(start)
     }
-    // pub unsafe fn fwrite(trie: *mut Trie, file: *mut FILE) -> libc::c_int {
-    //     if alpha_map_fwrite_bin((*trie).alpha_map.as_ref(), file) != 0 as libc::c_int {
-    //         return -(1 as libc::c_int);
-    //     }
-    //     if da_fwrite((*trie).da.as_ref(), file) != 0 as libc::c_int {
-    //         return -(1 as libc::c_int);
-    //     }
-    //     if tail_fwrite((*trie).tail.as_ref(), file) != 0 as libc::c_int {
-    //         return -(1 as libc::c_int);
-    //     }
-    //     (*trie).is_dirty = DA_FALSE;
-    //     0 as libc::c_int
-    // }
+
     pub fn is_dirty(&self) -> Bool {
         self.is_dirty
     }
     pub unsafe fn retrieve(&self, key: *const AlphaChar, o_data: *mut TrieData) -> Bool {
-        // let mut s: TrieIndex = 0;
-        // let mut suffix_idx: libc::c_short = 0;
-        // let mut p: *const AlphaChar = 0 as *const AlphaChar;
-        // s = da_get_root((*trie).da);
         let mut s = self.da.get_root();
         let mut p: *const AlphaChar = key;
         while self.da.get_base(s) >= 0 as libc::c_int {
@@ -225,14 +161,11 @@ impl Trie {
                 Some(tc) => tc,
                 None => return DA_FALSE,
             };
-            // let tc: TrieIndex = unsafe { alpha_map_char_to_trie(self.alpha_map.as_ref(), *p) };
 
             if self.da.walk(&mut s, tc as TrieChar) as u64 == 0 {
                 return DA_FALSE;
             }
-            // if p.is_null() {
-            //     break;
-            // }
+
             if unsafe { 0 as libc::c_uint == *p } {
                 break;
             }

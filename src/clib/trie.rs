@@ -44,14 +44,18 @@ pub unsafe extern "C" fn trie_new_from_file(path: *const libc::c_char) -> *mut T
 }
 #[no_mangle]
 pub unsafe extern "C" fn trie_fread(file: *mut FILE) -> *mut Trie {
-    let mut cfile = CFile::new(file, false);
-    let result = Trie::fread_safe(&mut cfile);
-    match result {
-        Ok(trie) => Box::into_raw(Box::new(trie)),
-        Err(err) => {
-            eprintln!("error: {:?}", err);
-            std::ptr::null_mut()
+    let cfile = CFile::new(file, false);
+    if let Some(mut cfile) = cfile {
+        let result = Trie::fread_safe(&mut cfile);
+        match result {
+            Ok(trie) => Box::into_raw(Box::new(trie)),
+            Err(err) => {
+                eprintln!("error: {:?}", err);
+                std::ptr::null_mut()
+            }
         }
+    } else {
+        std::ptr::null_mut()
     }
 }
 #[no_mangle]
@@ -93,11 +97,15 @@ pub unsafe extern "C" fn trie_serialize(trie: *mut Trie, ptr: *mut u8) {
 }
 #[no_mangle]
 pub unsafe extern "C" fn trie_fwrite(trie: *mut Trie, file: *mut FILE) -> libc::c_int {
-    let mut cfile = CFile::new(file, false);
-    let trie = unsafe { &mut *trie };
-    match trie.serialize_safe(&mut cfile) {
-        Ok(_) => DA_OK,
-        Err(_err) => DA_ERR,
+    let cfile = CFile::new(file, false);
+    if let Some(mut cfile) = cfile {
+        let trie = unsafe { &mut *trie };
+        match trie.serialize_safe(&mut cfile) {
+            Ok(_) => DA_OK,
+            Err(_err) => DA_ERR,
+        }
+    } else {
+        DA_ERR
     }
 }
 #[no_mangle]

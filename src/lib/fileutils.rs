@@ -1,5 +1,4 @@
 use byteorder::{BigEndian, ReadBytesExt};
-// use libc::fread;
 use std::{io, ptr};
 
 pub type FILE = libc::FILE;
@@ -13,10 +12,14 @@ pub struct CFile {
 }
 
 impl CFile {
-    pub fn new(file: *mut FILE, close_on_drop: bool) -> CFile {
-        CFile {
-            file,
-            close_on_drop,
+    pub fn new(file: *mut FILE, close_on_drop: bool) -> Option<CFile> {
+        if file.is_null() {
+            None
+        } else {
+            Some(CFile {
+                file,
+                close_on_drop,
+            })
         }
     }
 }
@@ -27,8 +30,6 @@ impl Drop for CFile {
             if res < 0 {
                 eprintln!("Call to libc::fclose returned '{res}'");
             }
-            self.file = ptr::null_mut();
-            self.close_on_drop = false;
         }
     }
 }
@@ -47,11 +48,7 @@ impl io::Seek for CFile {
         Ok(new_pos as u64)
     }
 }
-// impl io::Seek for FileDescriptor {
-//     fn seek(&mut self, pos: io::SeekFrom) -> io::Result<u64> {
 
-//     }
-// }
 impl io::Read for CFile {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         let len = unsafe {
