@@ -53,6 +53,10 @@ pub unsafe fn alpha_char_strcmp(
 }
 
 impl AlphaMap {
+    /// Magic number signature for the AlphaMap binary format (0xd9fcd9fc)
+    /// Introduced in the initial binary serialization format
+    const SIGNATURE: u32 = 0xd9fcd9fc;
+    const SIGNATURE_SIZE: usize = 4;
     pub fn fread_bin_safe<R: ReadSeekExt>(reader: &mut R) -> DatrieResult<AlphaMap> {
         let save_pos = reader.stream_position()?;
         AlphaMap::do_fread_bin_safe(reader).map_err(|err| {
@@ -65,7 +69,7 @@ impl AlphaMap {
     fn do_fread_bin_safe<R: ReadExt>(reader: &mut R) -> DatrieResult<AlphaMap> {
         let mut sig = 0;
         reader.read_uint32(&mut sig)?;
-        if sig != 0xd9fcd9fc {
+        if sig != Self::SIGNATURE {
             return Err(DatrieError::new(
                 ErrorKind::InvalidFileSignature,
                 format!("Unexpected AlphaMapOld signature: '{}'", sig),
@@ -88,8 +92,6 @@ impl AlphaMap {
 }
 
 impl AlphaMap {
-    const SIGNATURE: u32 = 0xd9fcd9fc;
-    const SIGNATURE_SIZE: usize = 4;
     pub fn get_serialized_size(&self) -> usize {
         let ranges_count = self.get_total_ranges();
         Self::SIGNATURE_SIZE
