@@ -41,7 +41,7 @@ jobs:
         run: LD_PRELOAD_PATH=target/debug/ cargo build --locked --all-features --all-targets
       # https://twitter.com/jonhoo/status/1571290371124260865
       - name: cargo test --locked
-        run: LD_PRELOAD_PATH=target/debug/ test --locked --all-features --all-targets
+        run: LD_PRELOAD_PATH=target/debug/ cargo test --locked --all-features --all-targets
       # https://github.com/rust-lang/cargo/issues/6669
       - name: cargo test --doc
         run: LD_PRELOAD_PATH=target/debug/ cargo test --locked --all-features --doc
