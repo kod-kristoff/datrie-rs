@@ -220,6 +220,13 @@ pub unsafe extern "C" fn trie_state_is_single(s: *const TrieState) -> Bool {
     (*s).is_suffix as Bool
 }
 #[no_mangle]
+pub unsafe extern "C" fn trie_state_is_terminal(s: *const TrieState) -> Bool {
+    match TrieState::is_terminal(s) {
+        true => DA_TRUE,
+        false => DA_FALSE,
+    }
+}
+#[no_mangle]
 pub unsafe extern "C" fn trie_state_get_data(s: *const TrieState) -> TrieData {
     if s.is_null() {
         return -(1 as libc::c_int);

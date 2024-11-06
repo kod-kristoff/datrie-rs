@@ -4,6 +4,7 @@ resolver = "2"
 members = [
     "src/lib",
     "src/clib",
+    "crates/datrie-test-suite",
     # "tools",
 ]
 
@@ -15,6 +16,7 @@ edition = "2021"
 [workspace.dependencies]
 # local crates
 datrie = { path = "src/lib" }
+datrie-clib = { path = "src/clib" }
 
 # external crates
 byteorder = "1.5.0"

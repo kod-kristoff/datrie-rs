@@ -1,0 +1,16 @@
+[package]
+name = "datrie-test-suite"
+version.workspace = true
+rust-version.workspace = true
+edition.workspace = true
+
+[dependencies]
+# datrie = { workspace = true }
+datrie-clib = { workspace = true }
+libc.workspace = true
+
+[dev-dependencies]
+anyhow = "1.0.92"
+rand.workspace = true
+rstest.workspace = true
+tempfile.workspace = true

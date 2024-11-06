@@ -10,3 +10,5 @@
 extern crate libc;
 pub mod alpha_map;
 pub mod trie;
+
+pub use trie::{Bool, DA_ERR, DA_FALSE, DA_OK, DA_TRUE};
