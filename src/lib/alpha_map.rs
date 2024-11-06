@@ -128,15 +128,15 @@ impl AlphaMap {
 impl AlphaMap {
     pub fn add_range(&mut self, begin: AlphaChar, end: AlphaChar) -> DatrieResult<()> {
         self.add_range_only(begin, end)?;
-        dbg!(&self.ranges);
+        // dbg!(&self.ranges);
         self.recalc_work_area();
         Ok(())
     }
     fn add_range_only(&mut self, begin: AlphaChar, end: AlphaChar) -> DatrieResult<()> {
-        dbg!(&begin, &end);
+        // dbg!(&begin, &end);
         let mut range_added = false;
         for range in self.ranges.iter_mut() {
-            dbg!(&range);
+            // dbg!(&range);
             if begin <= range.begin && range.end <= end {
                 range.begin = begin;
                 range.end = end;
@@ -173,8 +173,8 @@ impl AlphaMap {
             let mut new_ranges = Vec::new();
             let mut range_opt: Option<AlphaRange> = None;
             for range in &self.ranges {
-                dbg!(&range_opt);
-                dbg!(&range);
+                // dbg!(&range_opt);
+                // dbg!(&range);
                 if let Some(mut prev_range) = range_opt.take() {
                     if prev_range.end + 1 < range.begin {
                         new_ranges.push(prev_range);
@@ -199,11 +199,11 @@ impl AlphaMap {
             n.wrapping_add(x.end.wrapping_sub(x.begin).wrapping_add(1))
         });
         n_trie += 1;
-        dbg!(&n_trie);
+        // dbg!(&n_trie);
         let alpha_begin = self.ranges[0].begin;
         let alpha_end = self.ranges[self.ranges.len() - 1].end;
         let n_alpha = alpha_end.wrapping_sub(alpha_begin).wrapping_add(1);
-        dbg!(&n_alpha);
+        // dbg!(&n_alpha);
         self.alpha_to_trie_map = vec![Self::ERROR_CHAR; n_alpha as usize];
         self.trie_to_alpha_map = vec![Self::ERROR_CHAR as u32; n_trie as usize];
         let mut trie_char = 0;
@@ -227,16 +227,16 @@ impl AlphaMap {
     }
     const ERROR_CHAR: TrieIndex = 0x7fffffff;
     pub fn char_to_trie(&self, ac: AlphaChar) -> Option<TrieIndex> {
-        dbg!(&ac);
+        // dbg!(&ac);
         if ac == 0 {
             return Some(0);
         }
         let alpha_begin = self.ranges[0].begin;
-        dbg!(&alpha_begin);
+        // dbg!(&alpha_begin);
         let alpha_end = self.ranges[self.ranges.len() - 1].end;
-        dbg!(&alpha_end);
+        // dbg!(&alpha_end);
         if alpha_begin <= ac && ac <= alpha_end {
-            dbg!(&self.alpha_to_trie_map);
+            // dbg!(&self.alpha_to_trie_map);
             return Some(self.alpha_to_trie_map[ac.wrapping_sub(alpha_begin) as usize]);
         }
         None
