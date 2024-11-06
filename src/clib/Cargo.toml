@@ -18,3 +18,6 @@ doc = false
 datrie = { workspace = true }
 android_log-sys = "0.3"
 libc = { workspace = true }
+
+[dev-dependencies]
+anyhow = "1.0.92"

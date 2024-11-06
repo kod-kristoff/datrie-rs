@@ -12,11 +12,11 @@ pub mod darray;
 pub mod dstring;
 mod error;
 pub mod fileutils;
-pub mod tail;
 pub mod trie;
 // pub mod trie_char_string;
 pub mod trie_string;
 
 pub use crate::error::{DatrieError, ErrorKind};
+pub use alpha_map::Bool;
 
 pub type DatrieResult<T> = Result<T, DatrieError>;
