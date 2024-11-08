@@ -30,7 +30,7 @@ extern "C" {
 }
 use rand::Rng;
 
-use datrie::trie::{Trie, TrieIterator, TrieState, DA_TRUE};
+use datrie::{Trie, TrieIterator, TrieState, DA_TRUE};
 
 use crate::utils::{
     dict_src_get_data, dict_src_set_data, en_trie_new, get_dict_src, msg_step, TRIE_DATA_ERROR,

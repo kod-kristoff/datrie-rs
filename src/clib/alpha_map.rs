@@ -1,5 +1,5 @@
 use ::libc;
-use datrie::alpha_map::{AlphaChar, AlphaMap};
+use datrie::{AlphaChar, AlphaMap};
 
 pub type FILE = libc::FILE;
 pub type Bool = libc::c_uint;

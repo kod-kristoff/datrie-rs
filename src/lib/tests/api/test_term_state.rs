@@ -27,9 +27,7 @@
 // #include <stdlib.h>
 
 use datrie::{
-    alpha_map::AlphaChar,
-    trie::{Trie, TrieState, DA_TRUE},
-    AlphaStr, DatrieResult,
+    AlphaChar, AlphaStr, DatrieResult, {Trie, TrieState, DA_TRUE},
 };
 
 use crate::utils::{en_trie_new, msg_step, TRIE_DATA_ERROR};

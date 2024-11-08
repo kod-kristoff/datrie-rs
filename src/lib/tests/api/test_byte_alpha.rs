@@ -24,9 +24,7 @@
 //  *          https://github.com/tlwg/libdatrie/issues/6
 //  */
 use datrie::{
-    alpha_map::AlphaMap,
-    trie::{Trie, TrieData, DA_TRUE},
-    AlphaStr, DatrieResult,
+    AlphaMap, AlphaStr, DatrieResult, {Trie, TrieData, DA_TRUE},
 };
 
 use crate::utils::msg_step;

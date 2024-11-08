@@ -72,9 +72,7 @@ pub const TRIE_DATA_READ: TrieData = 2;
 // #include "utils.h"
 
 use datrie::{
-    alpha_map::{alpha_char_strcmp, AlphaChar, AlphaMap},
-    trie::{Trie, TrieData},
-    AlphaStr, DatrieResult,
+    AlphaStr, DatrieResult, {alpha_char_strcmp, AlphaChar, AlphaMap}, {Trie, TrieData},
 };
 
 // /*---------------------*

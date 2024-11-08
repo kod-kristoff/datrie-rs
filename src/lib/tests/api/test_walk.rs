@@ -168,9 +168,7 @@ unsafe fn print_walkables(walkables: *const AlphaChar, n_elm: usize) {
 const ALPHABET_SIZE: usize = 256;
 
 use datrie::{
-    alpha_map::AlphaChar,
-    trie::{Trie, TrieState, DA_TRUE},
-    AlphaStr, DatrieResult,
+    AlphaChar, AlphaStr, DatrieResult, {Trie, TrieState, DA_TRUE},
 };
 
 use crate::utils::{en_trie_new, msg_step};

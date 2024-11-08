@@ -118,9 +118,8 @@ fn is_all_checked(source: &[DictEntry]) -> bool {
 }
 
 use datrie::{
-    alpha_map::{alpha_char_strcmp, AlphaChar, AlphaMap},
-    trie::{Trie, TrieData, TrieIterator, TrieState, DA_FALSE},
-    AlphaStr, DatrieResult,
+    AlphaStr, DatrieResult, {alpha_char_strcmp, AlphaChar, AlphaMap},
+    {Trie, TrieData, TrieIterator, TrieState, DA_FALSE},
 };
 
 use crate::utils::msg_step;

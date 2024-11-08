@@ -28,8 +28,7 @@ extern "C" {
     // fn fopen(_: *const libc::c_char, _: *const libc::c_char) -> *mut FILE;
 }
 use datrie::{
-    trie::{Trie, TrieIterator, TrieState, DA_TRUE},
-    DatrieResult,
+    DatrieResult, {Trie, TrieIterator, TrieState, DA_TRUE},
 };
 
 use crate::utils::{

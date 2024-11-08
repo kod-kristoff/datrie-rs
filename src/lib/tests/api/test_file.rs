@@ -22,9 +22,7 @@
 //  * Author:  Theppitak Karoonboonyanan <theppitak@gmail.com>
 //  */
 use datrie::{
-    alpha_map::AlphaChar,
-    trie::{Bool, Trie, TrieData, DA_TRUE},
-    DatrieResult,
+    AlphaChar, DatrieResult, {Bool, Trie, TrieData, DA_TRUE},
 };
 use std::{ffi::CString, fs};
 use tempfile::tempdir;

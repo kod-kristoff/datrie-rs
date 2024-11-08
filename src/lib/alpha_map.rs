@@ -4,10 +4,10 @@ use std::io::SeekFrom;
 
 use crate::{
     fileutils::{ReadExt, ReadSeekExt},
+    trie::TrieCharString,
     DatrieError, DatrieResult, ErrorKind,
 };
 
-pub type FILE = libc::FILE;
 pub type Bool = libc::c_uint;
 pub const DA_TRUE: Bool = 1;
 pub const DA_FALSE: Bool = 0;
@@ -92,7 +92,7 @@ impl AlphaMap {
 }
 
 impl AlphaMap {
-    pub fn get_serialized_size(&self) -> usize {
+    pub(crate) fn get_serialized_size(&self) -> usize {
         let ranges_count = self.get_total_ranges();
         Self::SIGNATURE_SIZE
             + ::core::mem::size_of::<i32>()
@@ -101,7 +101,7 @@ impl AlphaMap {
     fn get_total_ranges(&self) -> usize {
         self.ranges.len()
     }
-    pub fn serialize(&self, buf: &mut dyn std::io::Write) -> DatrieResult<()> {
+    pub(crate) fn serialize(&self, buf: &mut dyn std::io::Write) -> DatrieResult<()> {
         buf.write_i32::<BigEndian>(Self::SIGNATURE as i32)?;
         buf.write_i32::<BigEndian>(self.get_total_ranges() as i32)?;
         for range in &self.ranges {
@@ -111,7 +111,7 @@ impl AlphaMap {
 
         Ok(())
     }
-    pub fn serialize_to_slice(&self, mut buf: &mut [u8]) -> DatrieResult<usize> {
+    pub(crate) fn serialize_to_slice(&self, mut buf: &mut [u8]) -> DatrieResult<usize> {
         buf.write_i32::<BigEndian>(Self::SIGNATURE as i32).unwrap();
         buf.write_i32::<BigEndian>(self.get_total_ranges() as i32)?;
         let mut written = 8;
@@ -226,7 +226,7 @@ impl AlphaMap {
         self.trie_to_alpha_map[0] = 0;
     }
     const ERROR_CHAR: TrieIndex = 0x7fffffff;
-    pub fn char_to_trie(&self, ac: AlphaChar) -> Option<TrieIndex> {
+    pub(crate) fn char_to_trie(&self, ac: AlphaChar) -> Option<TrieIndex> {
         // dbg!(&ac);
         if ac == 0 {
             return Some(0);
@@ -244,13 +244,13 @@ impl AlphaMap {
 }
 
 impl AlphaMap {
-    pub unsafe fn trie_to_char(&self, tc: TrieChar) -> AlphaChar {
+    pub(crate) unsafe fn trie_to_char(&self, tc: TrieChar) -> AlphaChar {
         if (tc as usize) < self.trie_to_alpha_map.len() {
             return self.trie_to_alpha_map[tc as usize];
         }
         !(0 as AlphaChar)
     }
-    pub unsafe fn char_to_trie_str(&self, mut str: *const AlphaChar) -> *mut TrieChar {
+    pub(crate) unsafe fn char_to_trie_str(&self, mut str: *const AlphaChar) -> *mut TrieChar {
         let current_block: u64;
         let trie_str = libc::malloc((alpha_char_strlen(str) + 1) as usize) as *mut TrieChar;
         if trie_str.is_null() as libc::c_int as libc::c_long != 0 {

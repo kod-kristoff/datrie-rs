@@ -22,9 +22,7 @@
 //  * Author:  Theppitak Karoonboonyanan <theppitak@gmail.com>
 //  */
 use datrie::{
-    alpha_map::AlphaChar,
-    trie::{Trie, DA_TRUE},
-    AlphaStr, DatrieResult,
+    AlphaChar, AlphaStr, DatrieResult, {Trie, DA_TRUE},
 };
 
 use crate::utils::{en_trie_new, get_dict_src, msg_step, TRIE_DATA_UNREAD};

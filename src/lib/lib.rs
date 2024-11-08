@@ -7,18 +7,19 @@
 #![allow(clippy::needless_late_init)]
 #![allow(clippy::len_without_is_empty)]
 #![allow(clippy::comparison_chain)]
-pub mod alpha_map;
-pub mod darray;
-pub mod dstring;
+pub(crate) mod alpha_map;
+mod darray;
+mod dstring;
 mod error;
 pub mod fileutils;
-pub mod trie;
+mod trie;
 // pub mod trie_char_string;
 pub mod alpha_str;
-pub mod trie_string;
+mod trie_string;
 
 pub use crate::alpha_str::AlphaStr;
 pub use crate::error::{DatrieError, ErrorKind};
-pub use alpha_map::Bool;
-
+pub use alpha_map::{alpha_char_strcmp, AlphaChar, AlphaMap};
+pub use alpha_map::{Bool, DA_FALSE, DA_TRUE};
+pub use trie::{Trie, TrieChar, TrieData, TrieEnumFunc, TrieIndex, TrieIterator, TrieState};
 pub type DatrieResult<T> = Result<T, DatrieError>;

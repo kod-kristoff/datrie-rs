@@ -1,9 +1,7 @@
 use ::libc;
 use datrie::{
-    alpha_map::AlphaMap,
     fileutils::CFile,
-    trie::{Trie, TrieData, TrieEnumFunc, TrieIterator, TrieState},
-    AlphaStr,
+    AlphaMap, AlphaStr, {Trie, TrieData, TrieEnumFunc, TrieIterator, TrieState},
 };
 use std::{ffi::CStr, ptr};
 
@@ -11,9 +9,9 @@ pub type Bool = libc::c_uint;
 pub const DA_TRUE: Bool = 1;
 pub const DA_FALSE: Bool = 0;
 
-pub type AlphaChar = datrie::alpha_map::AlphaChar;
-pub type TrieChar = datrie::alpha_map::TrieChar;
-pub type TrieIndex = datrie::alpha_map::TrieIndex;
+pub type AlphaChar = datrie::AlphaChar;
+pub type TrieChar = datrie::TrieChar;
+pub type TrieIndex = datrie::TrieIndex;
 pub type FILE = libc::FILE;
 pub const DA_OK: libc::c_int = 0;
 pub const DA_ERR: libc::c_int = -1;

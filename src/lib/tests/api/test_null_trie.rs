@@ -1,4 +1,4 @@
-use datrie::trie::{TrieIterator, TrieState};
+use datrie::{TrieIterator, TrieState};
 
 /*
  * libdatrie - Double-Array Trie Library

@@ -5,7 +5,7 @@ use byteorder::{BigEndian, WriteBytesExt};
 use core::mem::size_of;
 
 use crate::{
-    fileutils::{CFile, ReadExt},
+    fileutils::{file_write_int32, serialize_int32_be_incr, CFile, ReadExt},
     trie::TrieIndex,
     trie_string::{trie_string_append_char, trie_string_cut_last, TrieString},
     DatrieError, DatrieResult, ErrorKind,
@@ -18,8 +18,6 @@ extern "C" {
     fn realloc(_: *mut libc::c_void, _: libc::c_ulong) -> *mut libc::c_void;
     fn free(_: *mut libc::c_void);
     fn ftell(__stream: *mut FILE) -> libc::c_long;
-    fn serialize_int32_be_incr(buff: *mut *mut u8, val: i32);
-    fn file_write_int32(file: *mut FILE, val: i32) -> Bool;
 }
 
 pub type FILE = libc::FILE;

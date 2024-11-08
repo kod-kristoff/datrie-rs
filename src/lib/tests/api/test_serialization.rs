@@ -24,8 +24,7 @@
 use std::{ffi::CString, fs, io::Read};
 
 use datrie::{
-    trie::{Trie, DA_TRUE},
-    DatrieResult,
+    DatrieResult, {Trie, DA_TRUE},
 };
 use tempfile::tempdir;
 
