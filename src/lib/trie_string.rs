@@ -8,8 +8,6 @@ extern "C" {
     fn strlen(_: *const libc::c_char) -> libc::c_ulong;
 }
 pub type Bool = libc::c_uint;
-pub const DA_TRUE: Bool = 1;
-pub const DA_FALSE: Bool = 0;
 pub type TrieChar = libc::c_uchar;
 #[derive(Copy, Clone)]
 // #[repr(cC)]

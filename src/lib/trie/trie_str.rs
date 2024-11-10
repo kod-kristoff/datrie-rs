@@ -5,7 +5,7 @@ use std::ptr::addr_of;
 
 pub type TrieChar = u8;
 
-#[derive(Debug, Clone)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct TrieCharString {
     inner: Box<[TrieChar]>,
 }
@@ -63,6 +63,23 @@ impl TrieCharString {
             p = p.offset(1);
         }
         assert_eq!(self.inner[self.inner.len() - 1], 0);
+    }
+    /// Extracts a [`TrieCharStr`] slice containing the entire string.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::ffi::{TrieCharString, TrieCharStr};
+    ///
+    /// let c_string = TrieCharString::new(b"foo".to_vec()).expect("TrieCharString::new failed");
+    /// let cstr = c_string.as_c_str();
+    /// assert_eq!(cstr,
+    ///            TrieCharStr::from_bytes_with_nul(b"foo\0").expect("TrieCharStr::from_bytes_with_nul failed"));
+    /// ```
+    #[inline]
+    #[must_use]
+    pub fn as_trie_str(&self) -> &TrieCharStr {
+        &*self
     }
 
     // pub unsafe fn replace_from_ptr(&mut self, str: *const TrieChar) {
@@ -176,6 +193,11 @@ impl TrieCharString {
     }
 }
 
+impl fmt::Debug for TrieCharString {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "\"{}\"", self.to_bytes().escape_ascii())
+    }
+}
 // Turns this `TrieCharString` into an empty string to prevent
 // memory-unsafe code from working by accident. Inline
 // to prevent LLVM from optimizing it away in debug builds.
@@ -455,6 +477,28 @@ impl ToOwned for TrieCharStr {
         let mut b = hack::into_vec(core::mem::take(&mut target.inner));
         self.to_bytes_with_nul().clone_into(&mut b);
         target.inner = b.into_boxed_slice();
+    }
+}
+
+impl ops::Index<ops::RangeFrom<usize>> for TrieCharStr {
+    type Output = TrieCharStr;
+
+    #[inline]
+    fn index(&self, index: ops::RangeFrom<usize>) -> &TrieCharStr {
+        let bytes = self.to_bytes_with_nul();
+        // we need to manually check the starting index to account for the null
+        // byte, since otherwise we could get an empty string that doesn't end
+        // in a null.
+        if index.start < bytes.len() {
+            // SAFETY: Non-empty tail of a valid `TrieCharStr` is still a valid `TrieCharStr`.
+            unsafe { TrieCharStr::from_bytes_with_nul_unchecked(&bytes[index.start..]) }
+        } else {
+            panic!(
+                "index out of bounds: the len is {} but the index is {}",
+                bytes.len(),
+                index.start
+            );
+        }
     }
 }
 
