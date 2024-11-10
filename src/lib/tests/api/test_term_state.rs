@@ -61,9 +61,8 @@ fn test_term_state() -> DatrieResult<()> {
         msg_step("Populating trie with test set");
         let key_ab =
             AlphaStr::from_slice_with_nul(&['a' as AlphaChar, 'b' as AlphaChar, 0x0000]).unwrap();
-        assert_eq!(
+        assert!(
             Trie::store(&mut test_trie, key_ab, 1),
-            DA_TRUE,
             "Failed to add key 'ab', data 1.\n"
         );
         let key_abc = AlphaStr::from_slice_with_nul(&[
@@ -73,9 +72,8 @@ fn test_term_state() -> DatrieResult<()> {
             0x0000,
         ])
         .unwrap();
-        assert_eq!(
+        assert!(
             Trie::store(&mut test_trie, key_abc, 2),
-            DA_TRUE,
             "Failed to add key 'abc', data 2.\n"
         );
         //     if (!trie_store (test_trie, (AlphaChar *)L"abc", 2)) {

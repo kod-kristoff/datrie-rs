@@ -140,7 +140,7 @@ fn test_byte_list() -> DatrieResult<()> {
         msg_step("Storing entries to test trie");
         let mut source = get_source();
         for dict_p in &source {
-            if Trie::store(&mut test_trie, dict_p.key, dict_p.data) == 0 {
+            if !Trie::store(&mut test_trie, dict_p.key, dict_p.data) {
                 panic!(
                     "Fail to store entry to test trie: {:?}->{}",
                     dict_p.key, dict_p.data

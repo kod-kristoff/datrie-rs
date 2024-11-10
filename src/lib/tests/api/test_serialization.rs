@@ -23,9 +23,7 @@
 //  */
 use std::{ffi::CString, fs, io::Read};
 
-use datrie::{
-    DatrieResult, {Trie, DA_TRUE},
-};
+use datrie::{DatrieResult, Trie};
 use tempfile::tempdir;
 
 use crate::utils::{en_trie_new, get_dict_src, msg_step};
@@ -41,9 +39,8 @@ fn test_serialization() -> DatrieResult<()> {
     let dict_src = get_dict_src();
     unsafe {
         for dict_p in &dict_src {
-            assert_eq!(
+            assert!(
                 Trie::store(&mut test_trie, dict_p.key, dict_p.data),
-                DA_TRUE,
                 "Failed to add key '{:?}', data {}.\n",
                 dict_p.key,
                 dict_p.data
@@ -105,9 +102,8 @@ fn test_serialization_safe() -> DatrieResult<()> {
     let dict_src = get_dict_src();
     for dict_p in &dict_src {
         unsafe {
-            assert_eq!(
+            assert!(
                 Trie::store(&mut test_trie, dict_p.key, dict_p.data),
-                DA_TRUE,
                 "Failed to add key '{:?}', data {}.\n",
                 dict_p.key,
                 dict_p.data

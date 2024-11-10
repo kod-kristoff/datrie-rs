@@ -80,9 +80,8 @@ fn test_file() -> DatrieResult<()> {
         /* add/remove some words */
         let mut dict_src = get_dict_src();
         for dict_p in &dict_src {
-            assert_eq!(
+            assert!(
                 Trie::store(&mut test_trie, dict_p.key, dict_p.data),
-                DA_TRUE,
                 "Failed to add key '{:?}', data {}.\n",
                 dict_p.key,
                 dict_p.data
@@ -151,9 +150,8 @@ fn test_save_file_and_reload() -> DatrieResult<()> {
     let mut dict_src = get_dict_src();
     for dict_p in &dict_src {
         unsafe {
-            assert_eq!(
+            assert!(
                 Trie::store(&mut test_trie, dict_p.key, dict_p.data),
-                DA_TRUE,
                 "Failed to add key '{:?}', data {}.\n",
                 dict_p.key,
                 dict_p.data

@@ -122,7 +122,7 @@ pub unsafe extern "C" fn trie_retrieve(
     }
     let trie = unsafe { &*trie };
     let alpha_key = AlphaStr::from_ptr(key);
-    trie.retrieve(&alpha_key, o_data)
+    trie.retrieve(&alpha_key, o_data) as Bool
 }
 #[no_mangle]
 pub unsafe extern "C" fn trie_store(
@@ -135,7 +135,7 @@ pub unsafe extern "C" fn trie_store(
     }
     let trie = unsafe { &mut *trie };
     let alpha_key = AlphaStr::from_ptr(key);
-    trie.store(&alpha_key, data)
+    trie.store(&alpha_key, data) as Bool
 }
 #[no_mangle]
 pub unsafe extern "C" fn trie_store_if_absent(
@@ -148,7 +148,7 @@ pub unsafe extern "C" fn trie_store_if_absent(
     }
     let trie = unsafe { &mut *trie };
     let alpha_key = AlphaStr::from_ptr(key);
-    trie.store(&alpha_key, data)
+    trie.store(&alpha_key, data) as Bool
 }
 #[no_mangle]
 pub unsafe extern "C" fn trie_delete(trie: *mut Trie, key: *const AlphaChar) -> Bool {
@@ -157,7 +157,7 @@ pub unsafe extern "C" fn trie_delete(trie: *mut Trie, key: *const AlphaChar) -> 
     }
     let trie = unsafe { &mut *trie };
     let alpha_key = AlphaStr::from_ptr(key);
-    trie.delete(&alpha_key)
+    trie.delete(&alpha_key) as Bool
 }
 #[no_mangle]
 pub unsafe extern "C" fn trie_enumerate(
