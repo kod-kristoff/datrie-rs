@@ -111,15 +111,16 @@ fn test_file() -> DatrieResult<()> {
             is_failed: &mut is_failed,
         };
         /* mark entries found in file */
-        if Trie::enumerate(
-            &test_trie,
-            Some(trie_enum_mark_rec),
-            &mut enum_data as *mut EnumData as *mut libc::c_void,
-        ) != DA_TRUE
-        {
-            panic!("Failed to enumerate trie file contents.\n");
-            //         goto err_trie_saved;
-        }
+        assert!(
+            Trie::enumerate(
+                &test_trie,
+                Some(trie_enum_mark_rec),
+                &mut enum_data as *mut EnumData as *mut libc::c_void,
+            ),
+            "Failed to enumerate trie file contents.\n"
+        );
+        //         goto err_trie_saved;
+
         /* check for unmarked entries, (i.e. missed in file) */
         for dict_p in dict_src {
             if dict_p.data != TRIE_DATA_READ {
@@ -183,15 +184,14 @@ fn test_save_file_and_reload() -> DatrieResult<()> {
     };
     /* mark entries found in file */
     unsafe {
-        if Trie::enumerate(
-            &test_trie,
-            Some(trie_enum_mark_rec),
-            &mut enum_data as *mut EnumData as *mut libc::c_void,
-        ) != DA_TRUE
-        {
-            panic!("Failed to enumerate trie file contents.\n");
-            //         goto err_trie_saved;
-        }
+        assert!(
+            Trie::enumerate(
+                &test_trie,
+                Some(trie_enum_mark_rec),
+                &mut enum_data as *mut EnumData as *mut libc::c_void,
+            ),
+            "Failed to enumerate trie file contents.\n"
+        );
         /* check for unmarked entries, (i.e. missed in file) */
         for dict_p in dict_src {
             if dict_p.data != TRIE_DATA_READ {

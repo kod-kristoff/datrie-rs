@@ -5,7 +5,7 @@ use std::io::SeekFrom;
 use crate::{
     fileutils::{ReadExt, ReadSeekExt},
     trie::TrieCharString,
-    DatrieError, DatrieResult, ErrorKind,
+    AlphaStr, DatrieError, DatrieResult, ErrorKind,
 };
 
 pub type Bool = libc::c_uint;
@@ -267,6 +267,7 @@ impl AlphaMap {
             }
             if let Some(tc) = self.char_to_trie(*str) {
                 *p = tc as TrieChar;
+                dbg!(*p);
                 p = p.offset(1);
                 str = str.offset(1);
             } else {
@@ -285,23 +286,35 @@ impl AlphaMap {
             }
         }
     }
-    pub(crate) fn char_to_trie_str2(&self, mut str: *const AlphaChar) -> Option<TrieCharString> {
-        let len = unsafe { alpha_char_strlen(str) };
-        let mut buf = Vec::with_capacity(len as usize);
+    pub(crate) fn char_to_trie_str2(&self, str: &AlphaStr) -> Option<TrieCharString> {
+        let mut buf = Vec::with_capacity(str.count_slice() + 1);
+        dbg!(str);
+        let mut str = str.to_slice_with_nul();
         loop {
-            if unsafe { *str } == 0 {
+            dbg!(str[0]);
+            if str[0] == 0 {
                 break;
             }
-            if let Some(tc) = self.char_to_trie(unsafe { *str }) {
-                buf.push(tc as TrieChar);
-                str = unsafe { str.offset(1) };
+            if let Some(tc) = self.char_to_trie(str[0]) {
+                debug_assert_ne!(tc, 0);
+                dbg!(&tc);
+                let tc = tc as TrieChar;
+                dbg!(&tc);
+                // debug_assert_ne!(tc, 0);
+                if tc != 0 {
+                    buf.push(tc as TrieChar);
+                } else {
+                    eprintln!("ignoring tc==0 ...");
+                }
+                str = &str[1..];
             }
         }
         // TODO: use from_vec_unchecked?
+        dbg!(&buf);
         match TrieCharString::new(buf) {
             Ok(str) => Some(str),
             Err(err) => {
-                eprintln!("alpha_map:char_to_trie2: failed create TrieCharString: {err:?}");
+                eprintln!("alpha_map:char_to_trie_str2: failed create TrieCharString: {err:?}");
                 None
             }
         }

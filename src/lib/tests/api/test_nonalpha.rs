@@ -71,9 +71,8 @@ fn test_nonalpha() -> DatrieResult<()> {
 
         let mut trie_data = 0;
         for nonalpha_key in nonalpha_src {
-            assert_ne!(
-                Trie::retrieve(&test_trie, nonalpha_key, &mut trie_data),
-                DA_TRUE,
+            assert!(
+                !Trie::retrieve(&test_trie, nonalpha_key, &mut trie_data),
                 "False duplication on key '{:?}', with existing data {}.\n",
                 nonalpha_key,
                 trie_data

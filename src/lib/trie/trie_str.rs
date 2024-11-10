@@ -1,5 +1,6 @@
 use core::{fmt, slice};
 use std::borrow::Borrow;
+use std::error::Error;
 use std::ops;
 use std::ptr::addr_of;
 
@@ -13,6 +14,74 @@ pub struct TrieCharString {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NulError(usize, Vec<TrieChar>);
 
+/// An error indicating that a nul byte was not in the expected position.
+///
+/// The vector used to create a [`CString`] must have one and only one nul byte,
+/// positioned at the end.
+///
+/// This error is created by the [`CString::from_vec_with_nul`] method.
+/// See its documentation for more.
+///
+/// # Examples
+///
+/// ```
+/// use std::ffi::{CString, FromVecWithNulError};
+///
+/// let _: FromVecWithNulError = CString::from_vec_with_nul(b"f\0oo".to_vec()).unwrap_err();
+/// ```
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct FromVecWithNulError {
+    error_kind: FromBytesWithNulErrorKind,
+    bytes: Vec<u8>,
+}
+
+impl FromVecWithNulError {
+    /// Returns a slice of [`u8`]s bytes that were attempted to convert to a [`CString`].
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// use std::ffi::CString;
+    ///
+    /// // Some invalid bytes in a vector
+    /// let bytes = b"f\0oo".to_vec();
+    ///
+    /// let value = CString::from_vec_with_nul(bytes.clone());
+    ///
+    /// assert_eq!(&bytes[..], value.unwrap_err().as_bytes());
+    /// ```
+    #[must_use]
+    pub fn as_bytes(&self) -> &[u8] {
+        &self.bytes[..]
+    }
+
+    /// Returns the bytes that were attempted to convert to a [`CString`].
+    ///
+    /// This method is carefully constructed to avoid allocation. It will
+    /// consume the error, moving out the bytes, so that a copy of the bytes
+    /// does not need to be made.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// use std::ffi::CString;
+    ///
+    /// // Some invalid bytes in a vector
+    /// let bytes = b"f\0oo".to_vec();
+    ///
+    /// let value = CString::from_vec_with_nul(bytes.clone());
+    ///
+    /// assert_eq!(bytes, value.unwrap_err().into_bytes());
+    /// ```
+    #[must_use = "`self` will be dropped if the result is not used"]
+    pub fn into_bytes(self) -> Vec<u8> {
+        self.bytes
+    }
+}
 impl TrieCharString {
     pub fn new<T: Into<Vec<TrieChar>>>(t: T) -> Result<TrieCharString, NulError> {
         let bytes = t.into();
@@ -191,6 +260,86 @@ impl TrieCharString {
             }
         }
     }
+    /// Converts a <code>[Vec]<[u8]></code> to a [`CString`] without checking the
+    /// invariants on the given [`Vec`].
+    ///
+    /// # Safety
+    ///
+    /// The given [`Vec`] **must** have one nul byte as its last element.
+    /// This means it cannot be empty nor have any other nul byte anywhere else.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::ffi::CString;
+    /// assert_eq!(
+    ///     unsafe { CString::from_vec_with_nul_unchecked(b"abc\0".to_vec()) },
+    ///     unsafe { CString::from_vec_unchecked(b"abc".to_vec()) }
+    /// );
+    /// ```
+    #[must_use]
+    pub unsafe fn from_vec_with_nul_unchecked(v: Vec<u8>) -> Self {
+        debug_assert!(memchr::memchr(0, &v).unwrap() + 1 == v.len());
+        unsafe { Self::_from_vec_with_nul_unchecked(v) }
+    }
+
+    unsafe fn _from_vec_with_nul_unchecked(v: Vec<u8>) -> Self {
+        Self {
+            inner: v.into_boxed_slice(),
+        }
+    }
+
+    /// Attempts to converts a <code>[Vec]<[u8]></code> to a [`CString`].
+    ///
+    /// Runtime checks are present to ensure there is only one nul byte in the
+    /// [`Vec`], its last element.
+    ///
+    /// # Errors
+    ///
+    /// If a nul byte is present and not the last element or no nul bytes
+    /// is present, an error will be returned.
+    ///
+    /// # Examples
+    ///
+    /// A successful conversion will produce the same result as [`CString::new`]
+    /// when called without the ending nul byte.
+    ///
+    /// ```
+    /// use std::ffi::CString;
+    /// assert_eq!(
+    ///     CString::from_vec_with_nul(b"abc\0".to_vec())
+    ///         .expect("CString::from_vec_with_nul failed"),
+    ///     CString::new(b"abc".to_vec()).expect("CString::new failed")
+    /// );
+    /// ```
+    ///
+    /// An incorrectly formatted [`Vec`] will produce an error.
+    ///
+    /// ```
+    /// use std::ffi::{CString, FromVecWithNulError};
+    /// // Interior nul byte
+    /// let _: FromVecWithNulError = CString::from_vec_with_nul(b"a\0bc".to_vec()).unwrap_err();
+    /// // No nul byte
+    /// let _: FromVecWithNulError = CString::from_vec_with_nul(b"abc".to_vec()).unwrap_err();
+    /// ```
+    pub fn from_vec_with_nul(v: Vec<u8>) -> Result<Self, FromVecWithNulError> {
+        let nul_pos = memchr::memchr(0, &v);
+        match nul_pos {
+            Some(nul_pos) if nul_pos + 1 == v.len() => {
+                // SAFETY: We know there is only one nul byte, at the end
+                // of the vec.
+                Ok(unsafe { Self::_from_vec_with_nul_unchecked(v) })
+            }
+            Some(nul_pos) => Err(FromVecWithNulError {
+                error_kind: FromBytesWithNulErrorKind::InteriorNul(nul_pos),
+                bytes: v,
+            }),
+            None => Err(FromVecWithNulError {
+                error_kind: FromBytesWithNulErrorKind::NotNulTerminated,
+                bytes: v,
+            }),
+        }
+    }
 }
 
 impl fmt::Debug for TrieCharString {
@@ -239,6 +388,69 @@ pub struct TrieCharStr {
     //        this an unsized type. Essentially `sizeof(&TrieCharStr)` should be the
     //        same as `sizeof(&c_char)` but `TrieCharStr` should be an unsized type.
     inner: [TrieChar],
+}
+
+/// An error indicating that a nul byte was not in the expected position.
+///
+/// The slice used to create a [`TrieCharStr`] must have one and only one nul byte,
+/// positioned at the end.
+///
+/// This error is created by the [`TrieCharStr::from_bytes_with_nul`] method.
+/// See its documentation for more.
+///
+/// # Examples
+///
+/// ```
+/// use std::ffi::{TrieCharStr, FromBytesWithNulError};
+///
+/// let _: FromBytesWithNulError = TrieCharStr::from_bytes_with_nul(b"f\0oo").unwrap_err();
+/// ```
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct FromBytesWithNulError {
+    kind: FromBytesWithNulErrorKind,
+}
+
+#[derive(Clone, PartialEq, Eq, Debug)]
+enum FromBytesWithNulErrorKind {
+    InteriorNul(usize),
+    NotNulTerminated,
+}
+
+// FIXME: const stability attributes should not be required here, I think
+impl FromBytesWithNulError {
+    fn interior_nul(pos: usize) -> FromBytesWithNulError {
+        FromBytesWithNulError {
+            kind: FromBytesWithNulErrorKind::InteriorNul(pos),
+        }
+    }
+
+    fn not_nul_terminated() -> FromBytesWithNulError {
+        FromBytesWithNulError {
+            kind: FromBytesWithNulErrorKind::NotNulTerminated,
+        }
+    }
+}
+impl fmt::Display for FromBytesWithNulError {
+    #[allow(deprecated, deprecated_in_future)]
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.description())?;
+        if let FromBytesWithNulErrorKind::InteriorNul(pos) = self.kind {
+            write!(f, " at byte pos {pos}")?;
+        }
+        Ok(())
+    }
+}
+
+impl Error for FromBytesWithNulError {
+    #[allow(deprecated)]
+    fn description(&self) -> &str {
+        match self.kind {
+            FromBytesWithNulErrorKind::InteriorNul(..) => {
+                "data provided contains an interior nul byte"
+            }
+            FromBytesWithNulErrorKind::NotNulTerminated => "data provided is not nul terminated",
+        }
+    }
 }
 // impl TrieStr {
 //     pub unsafe fn from_ptr<'a>(ptr: *const TrieChar) -> &'a TrieStr {
@@ -321,6 +533,56 @@ impl TrieCharStr {
             None => Err(FromBytesUntilNulError(())),
         }
     }
+
+    /// Creates a C string wrapper from a byte slice with exactly one nul
+    /// terminator.
+    ///
+    /// This function will cast the provided `bytes` to a `TrieCharStr`
+    /// wrapper after ensuring that the byte slice is nul-terminated
+    /// and does not contain any interior nul bytes.
+    ///
+    /// If the nul byte may not be at the end,
+    /// [`TrieCharStr::from_bytes_until_nul`] can be used instead.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::ffi::TrieCharStr;
+    ///
+    /// let cstr = TrieCharStr::from_bytes_with_nul(b"hello\0");
+    /// assert!(cstr.is_ok());
+    /// ```
+    ///
+    /// Creating a `TrieCharStr` without a trailing nul terminator is an error:
+    ///
+    /// ```
+    /// use std::ffi::TrieCharStr;
+    ///
+    /// let cstr = TrieCharStr::from_bytes_with_nul(b"hello");
+    /// assert!(cstr.is_err());
+    /// ```
+    ///
+    /// Creating a `TrieCharStr` with an interior nul byte is an error:
+    ///
+    /// ```
+    /// use std::ffi::TrieCharStr;
+    ///
+    /// let cstr = TrieCharStr::from_bytes_with_nul(b"he\0llo\0");
+    /// assert!(cstr.is_err());
+    /// ```
+    pub fn from_bytes_with_nul(bytes: &[u8]) -> Result<&Self, FromBytesWithNulError> {
+        let nul_pos = memchr::memchr(0, bytes);
+        match nul_pos {
+            Some(nul_pos) if nul_pos + 1 == bytes.len() => {
+                // SAFETY: We know there is only one nul byte, at the end
+                // of the byte slice.
+                Ok(unsafe { Self::from_bytes_with_nul_unchecked(bytes) })
+            }
+            Some(nul_pos) => Err(FromBytesWithNulError::interior_nul(nul_pos)),
+            None => Err(FromBytesWithNulError::not_nul_terminated()),
+        }
+    }
+
     #[inline]
     #[must_use]
     pub unsafe fn from_bytes_with_nul_unchecked(bytes: &[TrieChar]) -> &TrieCharStr {
@@ -427,6 +689,56 @@ impl TrieCharStr {
         // FIXME(const-hack) replace with range index
         // SAFETY: to_bytes_with_nul returns slice with length at least 1
         unsafe { slice::from_raw_parts(bytes.as_ptr(), bytes.len() - 1) }
+    }
+    /// Returns `true` if `self.to_bytes()` has a length of 0.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::ffi::CStr;
+    /// # use std::ffi::FromBytesWithNulError;
+    ///
+    /// # fn main() { test().unwrap(); }
+    /// # fn test() -> Result<(), FromBytesWithNulError> {
+    /// let cstr = CStr::from_bytes_with_nul(b"foo\0")?;
+    /// assert!(!cstr.is_empty());
+    ///
+    /// let empty_cstr = CStr::from_bytes_with_nul(b"\0")?;
+    /// assert!(empty_cstr.is_empty());
+    /// assert!(c"".is_empty());
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[inline]
+    pub const fn is_empty(&self) -> bool {
+        // SAFETY: We know there is at least one byte; for empty strings it
+        // is the NUL terminator.
+        // FIXME(const-hack): use get_unchecked
+        unsafe { *self.inner.as_ptr() == 0 }
+    }
+
+    /// Returns the length of `self`. Like C's `strlen`, this does not include the nul terminator.
+    ///
+    /// > **Note**: This method is currently implemented as a constant-time
+    /// > cast, but it is planned to alter its definition in the future to
+    /// > perform the length calculation whenever this method is called.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::ffi::CStr;
+    ///
+    /// let cstr = CStr::from_bytes_with_nul(b"foo\0").unwrap();
+    /// assert_eq!(cstr.count_bytes(), 3);
+    ///
+    /// let cstr = CStr::from_bytes_with_nul(b"\0").unwrap();
+    /// assert_eq!(cstr.count_bytes(), 0);
+    /// ```
+    #[inline]
+    #[must_use]
+    #[doc(alias("len", "strlen"))]
+    pub const fn count_bytes(&self) -> usize {
+        self.inner.len() - 1
     }
 }
 

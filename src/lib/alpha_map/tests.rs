@@ -118,7 +118,10 @@ mod get_serialized_size {
     }
 }
 mod char_to_trie {
-    use crate::alpha_map::{AlphaChar, TrieIndex};
+    use crate::{
+        alpha_map::{AlphaChar, TrieIndex},
+        AlphaStr,
+    };
 
     use super::*;
     use rstest::rstest;
@@ -144,12 +147,10 @@ mod char_to_trie {
     fn char_to_trie_str() -> DatrieResult<()> {
         let mut alpha_map = AlphaMap::default();
         alpha_map.add_range(0x00, 0xff)?;
-        let alpha_key = &[97, 112, 97, 0];
+        let alpha_key = AlphaStr::from_slice_with_nul(&[97, 112, 97, 0]).unwrap();
 
         let key = unsafe { alpha_map.char_to_trie_str(alpha_key.as_ptr()) };
-        let key2 = alpha_map
-            .char_to_trie_str2(alpha_key.as_ptr())
-            .expect("a string");
+        let key2 = alpha_map.char_to_trie_str2(alpha_key).expect("a string");
 
         assert_eq!(
             unsafe { libc::strlen(key as *const i8) },

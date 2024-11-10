@@ -53,9 +53,8 @@ fn test_byte_alpha() -> DatrieResult<()> {
 
         msg_step("Retrieving data from test trie");
         let mut data = 0;
-        assert_eq!(
+        assert!(
             Trie::retrieve(&test_trie, key, &mut data),
-            DA_TRUE,
             "Fail to retrieve key from test trie\n"
         );
         assert_eq!(
