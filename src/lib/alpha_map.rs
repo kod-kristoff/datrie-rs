@@ -250,6 +250,9 @@ impl AlphaMap {
         }
         !(0 as AlphaChar)
     }
+    pub(crate) fn trie_to_char2(&self, tc: TrieChar) -> Option<AlphaChar> {
+        self.trie_to_alpha_map.get(tc as usize).copied()
+    }
     pub(crate) unsafe fn char_to_trie_str(&self, mut str: *const AlphaChar) -> *mut TrieChar {
         let current_block: u64;
         let trie_str = libc::malloc((alpha_char_strlen(str) + 1) as usize) as *mut TrieChar;
@@ -279,6 +282,27 @@ impl AlphaMap {
             _ => {
                 *p = '\0' as i32 as TrieChar;
                 trie_str
+            }
+        }
+    }
+    pub(crate) fn char_to_trie_str2(&self, mut str: *const AlphaChar) -> Option<TrieCharString> {
+        let len = unsafe { alpha_char_strlen(str) };
+        let mut buf = Vec::with_capacity(len as usize);
+        loop {
+            if unsafe { *str } == 0 {
+                break;
+            }
+            if let Some(tc) = self.char_to_trie(unsafe { *str }) {
+                buf.push(tc as TrieChar);
+                str = unsafe { str.offset(1) };
+            }
+        }
+        // TODO: use from_vec_unchecked?
+        match TrieCharString::new(buf) {
+            Ok(str) => Some(str),
+            Err(err) => {
+                eprintln!("alpha_map:char_to_trie2: failed create TrieCharString: {err:?}");
+                None
             }
         }
     }

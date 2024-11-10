@@ -139,6 +139,33 @@ mod char_to_trie {
 
         Ok(())
     }
+
+    #[test]
+    fn char_to_trie_str() -> DatrieResult<()> {
+        let mut alpha_map = AlphaMap::default();
+        alpha_map.add_range(0x00, 0xff)?;
+        let alpha_key = &[97, 112, 97, 0];
+
+        let key = unsafe { alpha_map.char_to_trie_str(alpha_key.as_ptr()) };
+        let key2 = alpha_map
+            .char_to_trie_str2(alpha_key.as_ptr())
+            .expect("a string");
+
+        assert_eq!(
+            unsafe { libc::strlen(key as *const i8) },
+            key2.count_bytes()
+        );
+
+        unsafe {
+            let mut p = key;
+            for c2 in key2.as_bytes() {
+                assert_eq!(*c2, *p);
+                p = p.offset(1);
+            }
+            assert_eq!(*p, 0);
+        }
+        Ok(())
+    }
 }
 #[test]
 fn get_total_ranges_works() -> DatrieResult<()> {
