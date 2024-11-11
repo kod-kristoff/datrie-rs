@@ -159,7 +159,7 @@ pub unsafe extern "C" fn trie_delete(trie: *mut Trie, key: *const AlphaChar) -> 
     }
     let trie = unsafe { &mut *trie };
     let alpha_key = AlphaStr::from_ptr(key);
-    trie.delete(key)
+    trie.delete(&alpha_key)
 }
 #[no_mangle]
 pub unsafe extern "C" fn trie_enumerate(

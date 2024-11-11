@@ -346,41 +346,40 @@ impl Trie {
 }
 
 impl Trie {
-    pub fn delete(&mut self, key: *const AlphaChar) -> Bool {
+    pub fn delete(&mut self, key: &AlphaStr) -> Bool {
         // let mut s: TrieIndex = 0;
         // let mut t: TrieIndex = 0;
         // let mut suffix_idx: libc::c_short = 0;
         // let mut p: *const AlphaChar = 0 as *const AlphaChar;
         let mut s = (*self.da).get_root();
-        let mut p = key;
+        let key_slice = key.to_slice_with_nul();
+        let mut p = key_slice;
         while (*self.da).get_base(s) >= 0 as libc::c_int {
-            let tc: TrieIndex = match unsafe { self.alpha_map.char_to_trie(*p) } {
-                Some(tc) => tc,
-                None => return DA_FALSE,
+            let Some(tc) = self.alpha_map.char_to_trie(p[0]) else {
+                return DA_FALSE;
             };
             if unsafe { self.da.walk(&mut s, tc as TrieChar) } as u64 == 0 {
                 return DA_FALSE;
             }
-            if unsafe { 0 as libc::c_int as libc::c_uint == *p } {
+            if p[0] == 0 {
                 break;
             }
-            p = unsafe { p.offset(1) };
+            p = &p[1..];
         }
         let t = -(*self.da).get_base(s);
         // suffix_idx = 0 as libc::c_int as libc::c_short;
         let mut suffix_idx: libc::c_short = 0;
         loop {
-            let tc_0: TrieIndex = match unsafe { self.alpha_map.char_to_trie(*p) } {
-                Some(tc) => tc,
-                None => return DA_FALSE,
+            let Some(tc_0) = self.alpha_map.char_to_trie(p[0]) else {
+                return DA_FALSE;
             };
             if unsafe { self.tail.walk_char(t, &mut suffix_idx, tc_0 as TrieChar) as u64 == 0 } {
                 return DA_FALSE;
             }
-            if unsafe { 0 as libc::c_int as libc::c_uint == *p } {
+            if p[0] == 0 {
                 break;
             }
-            p = unsafe { p.offset(1) };
+            p = &p[1..];
         }
         unsafe {
             self.tail.delete(t);

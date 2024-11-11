@@ -105,7 +105,7 @@ fn test_store_retrieve() {
                 }
             }
             println!("Deleting '{:?}'", dict_src[i].key);
-            if Trie::delete(&mut test_trie, dict_src[i].key.as_ptr()) != DA_TRUE {
+            if Trie::delete(&mut test_trie, dict_src[i].key) != DA_TRUE {
                 panic!("Failed to delete '{:?}'", dict_src[i].key);
                 //             is_failed = TRUE;
             }
