@@ -40,7 +40,7 @@ fn test_nonalpha() -> DatrieResult<()> {
         let dict_src = get_dict_src();
         for dict_p in &dict_src {
             assert_eq!(
-                Trie::store(&mut test_trie, dict_p.key.as_ptr(), dict_p.data),
+                Trie::store(&mut test_trie, dict_p.key, dict_p.data),
                 DA_TRUE,
                 "Failed to add key '{:?}', data {}.\n",
                 dict_p.key,
@@ -82,7 +82,7 @@ fn test_nonalpha() -> DatrieResult<()> {
                 trie_data
             );
             assert_ne!(
-                Trie::store(&mut test_trie, nonalpha_key.as_ptr(), TRIE_DATA_UNREAD),
+                Trie::store(&mut test_trie, nonalpha_key, TRIE_DATA_UNREAD),
                 DA_TRUE,
                 "Wrongly added key '{:?}' containing non-alphanet char\n",
                 nonalpha_key

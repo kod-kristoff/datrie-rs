@@ -137,7 +137,7 @@ pub unsafe extern "C" fn trie_store(
     }
     let trie = unsafe { &mut *trie };
     let alpha_key = AlphaStr::from_ptr(key);
-    trie.store(key, data)
+    trie.store(&alpha_key, data)
 }
 #[no_mangle]
 pub unsafe extern "C" fn trie_store_if_absent(
@@ -150,7 +150,7 @@ pub unsafe extern "C" fn trie_store_if_absent(
     }
     let trie = unsafe { &mut *trie };
     let alpha_key = AlphaStr::from_ptr(key);
-    trie.store(key, data)
+    trie.store(&alpha_key, data)
 }
 #[no_mangle]
 pub unsafe extern "C" fn trie_delete(trie: *mut Trie, key: *const AlphaChar) -> Bool {

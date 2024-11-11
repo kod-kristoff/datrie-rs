@@ -59,7 +59,7 @@ fn test_store_retrieve() {
         let mut dict_src = get_dict_src();
         for dict_p in &dict_src {
             //     for (dict_p = dict_src; dict_p->key; dict_p++) {
-            if Trie::store(&mut test_trie, dict_p.key.as_ptr(), dict_p.data) != DA_TRUE {
+            if Trie::store(&mut test_trie, dict_p.key, dict_p.data) != DA_TRUE {
                 panic!(
                     "Failed to add key '{:?}', data {}.\n",
                     dict_p.key, dict_p.data

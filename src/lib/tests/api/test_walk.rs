@@ -198,7 +198,7 @@ fn test_walk() -> DatrieResult<()> {
         for dict_p in &walk_dict {
             //     for (dict_p = walk_dict; dict_p->key; dict_p++) {
             assert_eq!(
-                Trie::store(&mut test_trie, dict_p.key.as_ptr(), dict_p.data),
+                Trie::store(&mut test_trie, dict_p.key, dict_p.data),
                 DA_TRUE,
                 "Failed to add key '{:?}', data {}.\n",
                 dict_p.key,

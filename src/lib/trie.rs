@@ -195,12 +195,12 @@ impl Trie {
         DA_TRUE
     }
 
-    pub unsafe fn store(&mut self, key: *const AlphaChar, data: TrieData) -> Bool {
-        self.store_conditionally(key, data, DA_TRUE)
+    pub unsafe fn store(&mut self, key: &AlphaStr, data: TrieData) -> Bool {
+        self.store_conditionally(key.as_ptr(), data, DA_TRUE)
     }
 
-    pub unsafe fn store_if_absent(&mut self, key: *const AlphaChar, data: TrieData) -> Bool {
-        self.store_conditionally(key, data, DA_FALSE)
+    pub unsafe fn store_if_absent(&mut self, key: &AlphaStr, data: TrieData) -> Bool {
+        self.store_conditionally(key.as_ptr(), data, DA_FALSE)
     }
     unsafe fn store_conditionally(
         &mut self,

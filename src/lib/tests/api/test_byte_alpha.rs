@@ -49,7 +49,7 @@ fn test_byte_alpha() -> DatrieResult<()> {
         msg_step("Storing key to test trie");
         let key = AlphaStr::from_slice_with_nul(&[0xff, 0xff, 0]).unwrap();
         assert_eq!(
-            Trie::store(&mut test_trie, key.as_ptr(), TEST_DATA),
+            Trie::store(&mut test_trie, key, TEST_DATA),
             DA_TRUE,
             "Fail to store key to test trie\n"
         );
