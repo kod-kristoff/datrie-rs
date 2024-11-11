@@ -3,6 +3,7 @@ use datrie::{
     alpha_map::AlphaMap,
     fileutils::CFile,
     trie::{Trie, TrieData, TrieEnumFunc, TrieIterator, TrieState},
+    AlphaStr,
 };
 use std::{ffi::CStr, ptr};
 
@@ -122,7 +123,8 @@ pub unsafe extern "C" fn trie_retrieve(
         return DA_FALSE;
     }
     let trie = unsafe { &*trie };
-    trie.retrieve(key, o_data)
+    let alpha_key = AlphaStr::from_ptr(key);
+    trie.retrieve(&alpha_key, o_data)
 }
 #[no_mangle]
 pub unsafe extern "C" fn trie_store(
@@ -134,6 +136,7 @@ pub unsafe extern "C" fn trie_store(
         return DA_FALSE;
     }
     let trie = unsafe { &mut *trie };
+    let alpha_key = AlphaStr::from_ptr(key);
     trie.store(key, data)
 }
 #[no_mangle]
@@ -146,6 +149,7 @@ pub unsafe extern "C" fn trie_store_if_absent(
         return DA_FALSE;
     }
     let trie = unsafe { &mut *trie };
+    let alpha_key = AlphaStr::from_ptr(key);
     trie.store(key, data)
 }
 #[no_mangle]
@@ -154,6 +158,7 @@ pub unsafe extern "C" fn trie_delete(trie: *mut Trie, key: *const AlphaChar) -> 
         return DA_FALSE;
     }
     let trie = unsafe { &mut *trie };
+    let alpha_key = AlphaStr::from_ptr(key);
     trie.delete(key)
 }
 #[no_mangle]

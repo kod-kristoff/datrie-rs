@@ -24,7 +24,7 @@
 use datrie::{
     alpha_map::AlphaChar,
     trie::{Trie, DA_TRUE},
-    DatrieResult,
+    AlphaStr, DatrieResult,
 };
 
 use crate::utils::{en_trie_new, get_dict_src, msg_step, TRIE_DATA_UNREAD};
@@ -50,7 +50,7 @@ fn test_nonalpha() -> DatrieResult<()> {
 
         //     /* test storing keys with non-alphabet chars */
         let nonalpha_src = [
-            &[
+            &AlphaStr::from_slice_with_nul(&[
                 'a' as AlphaChar,
                 '6' as AlphaChar,
                 'a' as AlphaChar,
@@ -58,8 +58,9 @@ fn test_nonalpha() -> DatrieResult<()> {
                 'u' as AlphaChar,
                 's' as AlphaChar,
                 0x0000,
-            ],
-            &[
+            ])
+            .unwrap(),
+            &AlphaStr::from_slice_with_nul(&[
                 'a' as AlphaChar,
                 '5' as AlphaChar,
                 'a' as AlphaChar,
@@ -67,13 +68,14 @@ fn test_nonalpha() -> DatrieResult<()> {
                 'u' as AlphaChar,
                 's' as AlphaChar,
                 0x0000,
-            ],
+            ])
+            .unwrap(),
         ];
 
         let mut trie_data = 0;
         for nonalpha_key in nonalpha_src {
             assert_ne!(
-                Trie::retrieve(&test_trie, nonalpha_key.as_ptr(), &mut trie_data),
+                Trie::retrieve(&test_trie, nonalpha_key, &mut trie_data),
                 DA_TRUE,
                 "False duplication on key '{:?}', with existing data {}.\n",
                 nonalpha_key,

@@ -73,7 +73,7 @@ fn test_store_retrieve() {
         //     is_failed = FALSE;
         for dict_p in &dict_src {
             let mut trie_data = 0;
-            if Trie::retrieve(&test_trie, dict_p.key.as_ptr(), &mut trie_data) != DA_TRUE {
+            if Trie::retrieve(&test_trie, dict_p.key, &mut trie_data) != DA_TRUE {
                 panic!("Failed to retrieve key '{:?}'.\n", dict_p.key);
             }
             assert_eq!(
@@ -126,7 +126,7 @@ fn test_store_retrieve() {
             }
 
             let mut trie_data = 0;
-            if Trie::retrieve(&test_trie, dict_p.key.as_ptr(), &mut trie_data) != DA_TRUE {
+            if Trie::retrieve(&test_trie, dict_p.key, &mut trie_data) != DA_TRUE {
                 panic!("Failed to retrieve key {:?}'.\n", dict_p.key);
                 //             is_failed = TRUE;
             }

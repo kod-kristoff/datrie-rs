@@ -7,7 +7,7 @@ use std::path::Path;
 use std::{fs, io};
 
 use crate::fileutils::{CFile, ReadExt};
-use crate::{alpha_map::*, darray::*, tail::*};
+use crate::{alpha_map::*, darray::*, tail::*, AlphaStr};
 use crate::{trie_string::*, DatrieError, DatrieResult, ErrorKind};
 use ::libc;
 
@@ -153,43 +153,39 @@ impl Trie {
     pub fn is_dirty(&self) -> Bool {
         self.is_dirty
     }
-    pub unsafe fn retrieve(&self, key: *const AlphaChar, o_data: *mut TrieData) -> Bool {
+    pub unsafe fn retrieve(&self, key: &AlphaStr, o_data: *mut TrieData) -> Bool {
         let mut s = self.da.get_root();
-        let mut p: *const AlphaChar = key;
+        let key_slice = key.to_slice_with_nul();
+        let mut p = key_slice;
+
         while self.da.get_base(s) >= 0 as libc::c_int {
-            let tc: TrieIndex = match self.alpha_map.char_to_trie(*p) {
-                Some(tc) => tc,
-                None => return DA_FALSE,
+            let Some(tc) = self.alpha_map.char_to_trie(p[0]) else {
+                return DA_FALSE;
             };
 
             if self.da.walk(&mut s, tc as TrieChar) as u64 == 0 {
                 return DA_FALSE;
             }
-
-            if unsafe { 0 as libc::c_uint == *p } {
+            if p[0] == 0 {
                 break;
             }
-            p = unsafe { p.offset(1) };
+            p = &p[1..];
         }
         s = -self.da.get_base(s);
         let mut suffix_idx: libc::c_short = 0;
         loop {
-            let tc_0: TrieIndex = match self.alpha_map.char_to_trie(*p) {
-                Some(tc) => tc,
-                None => return DA_FALSE,
+            let Some(tc_0) = self.alpha_map.char_to_trie(p[0]) else {
+                return DA_FALSE;
             };
-            // let tc_0: TrieIndex = unsafe { alpha_map_char_to_trie(self.alpha_map.as_ref(), *p) };
 
             if unsafe { self.tail.walk_char(s, &mut suffix_idx, tc_0 as TrieChar) } as u64 == 0 {
                 return DA_FALSE;
             }
-            // if p.is_null() {
-            //     break;
-            // }
-            if unsafe { 0 as libc::c_uint == *p } {
+
+            if p[0] == 0 {
                 break;
             }
-            p = unsafe { p.offset(1) };
+            p = &p[1..];
         }
         if !o_data.is_null() {
             unsafe {
