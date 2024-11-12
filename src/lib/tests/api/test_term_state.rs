@@ -29,7 +29,7 @@
 use datrie::{
     alpha_map::AlphaChar,
     trie::{Trie, TrieState, DA_TRUE},
-    DatrieResult,
+    AlphaStr, DatrieResult,
 };
 
 use crate::utils::{en_trie_new, msg_step, TRIE_DATA_ERROR};
@@ -61,15 +61,22 @@ fn test_term_state() -> DatrieResult<()> {
 
         /* populate trie */
         msg_step("Populating trie with test set");
-        let key_ab = &['a' as AlphaChar, 'b' as AlphaChar, 0x0000];
+        let key_ab =
+            AlphaStr::from_slice_with_nul(&['a' as AlphaChar, 'b' as AlphaChar, 0x0000]).unwrap();
         assert_eq!(
-            Trie::store(&mut test_trie, key_ab.as_ptr(), 1),
+            Trie::store(&mut test_trie, key_ab, 1),
             DA_TRUE,
             "Failed to add key 'ab', data 1.\n"
         );
-        let key_abc = &['a' as AlphaChar, 'b' as AlphaChar, 'c' as AlphaChar, 0x0000];
+        let key_abc = AlphaStr::from_slice_with_nul(&[
+            'a' as AlphaChar,
+            'b' as AlphaChar,
+            'c' as AlphaChar,
+            0x0000,
+        ])
+        .unwrap();
         assert_eq!(
-            Trie::store(&mut test_trie, key_abc.as_ptr(), 2),
+            Trie::store(&mut test_trie, key_abc, 2),
             DA_TRUE,
             "Failed to add key 'abc', data 2.\n"
         );

@@ -27,7 +27,7 @@
 //  *---------------------------*/
 #[derive(Debug, Clone, Copy)]
 pub struct DictRec {
-    pub key: &'static [AlphaChar],
+    pub key: &'static AlphaStr,
     pub data: TrieData,
 }
 
@@ -74,7 +74,7 @@ pub const TRIE_DATA_READ: TrieData = 2;
 use datrie::{
     alpha_map::{alpha_char_strcmp, AlphaChar, AlphaMap},
     trie::{Trie, TrieData},
-    DatrieResult,
+    AlphaStr, DatrieResult,
 };
 
 // /*---------------------*
@@ -107,11 +107,11 @@ pub fn en_trie_new() -> DatrieResult<Trie> {
 pub fn get_dict_src() -> [DictRec; 39] {
     [
         DictRec {
-            key: &['a' as AlphaChar, 0x0000],
+            key: &AlphaStr::from_slice_with_nul(&['a' as AlphaChar, 0x0000]).unwrap(),
             data: TRIE_DATA_UNREAD,
         },
         DictRec {
-            key: &[
+            key: &AlphaStr::from_slice_with_nul(&[
                 'a' as AlphaChar,
                 'b' as AlphaChar,
                 'a' as AlphaChar,
@@ -119,11 +119,12 @@ pub fn get_dict_src() -> [DictRec; 39] {
                 'u' as AlphaChar,
                 's' as AlphaChar,
                 0x0000,
-            ],
+            ])
+            .unwrap(),
             data: TRIE_DATA_UNREAD,
         },
         DictRec {
-            key: &[
+            key: &AlphaStr::from_slice_with_nul(&[
                 'a' as AlphaChar,
                 'b' as AlphaChar,
                 'a' as AlphaChar,
@@ -132,11 +133,12 @@ pub fn get_dict_src() -> [DictRec; 39] {
                 'o' as AlphaChar,
                 'n' as AlphaChar,
                 0x0000,
-            ],
+            ])
+            .unwrap(),
             data: TRIE_DATA_UNREAD,
         },
         DictRec {
-            key: &[
+            key: &AlphaStr::from_slice_with_nul(&[
                 'a' as AlphaChar,
                 'c' as AlphaChar,
                 'c' as AlphaChar,
@@ -146,11 +148,12 @@ pub fn get_dict_src() -> [DictRec; 39] {
                 'n' as AlphaChar,
                 't' as AlphaChar,
                 0x0000,
-            ],
+            ])
+            .unwrap(),
             data: TRIE_DATA_UNREAD,
         },
         DictRec {
-            key: &[
+            key: &AlphaStr::from_slice_with_nul(&[
                 'a' as AlphaChar,
                 'c' as AlphaChar,
                 'c' as AlphaChar,
@@ -160,11 +163,12 @@ pub fn get_dict_src() -> [DictRec; 39] {
                 'i' as AlphaChar,
                 't' as AlphaChar,
                 0x0000,
-            ],
+            ])
+            .unwrap(),
             data: TRIE_DATA_UNREAD,
         },
         DictRec {
-            key: &[
+            key: &AlphaStr::from_slice_with_nul(&[
                 'a' as AlphaChar,
                 'l' as AlphaChar,
                 'g' as AlphaChar,
@@ -175,11 +179,12 @@ pub fn get_dict_src() -> [DictRec; 39] {
                 'h' as AlphaChar,
                 'm' as AlphaChar,
                 0x0000,
-            ],
+            ])
+            .unwrap(),
             data: TRIE_DATA_UNREAD,
         },
         DictRec {
-            key: &[
+            key: &AlphaStr::from_slice_with_nul(&[
                 'a' as AlphaChar,
                 'm' as AlphaChar,
                 'm' as AlphaChar,
@@ -188,121 +193,155 @@ pub fn get_dict_src() -> [DictRec; 39] {
                 'i' as AlphaChar,
                 'a' as AlphaChar,
                 0x0000,
-            ],
+            ])
+            .unwrap(),
             data: TRIE_DATA_UNREAD,
         },
         DictRec {
-            key: &[
+            key: &AlphaStr::from_slice_with_nul(&[
                 'a' as AlphaChar,
                 'n' as AlphaChar,
                 'g' as AlphaChar,
                 'e' as AlphaChar,
                 'l' as AlphaChar,
                 0x0000,
-            ],
+            ])
+            .unwrap(),
             data: TRIE_DATA_UNREAD,
         },
         DictRec {
-            key: &[
+            key: &AlphaStr::from_slice_with_nul(&[
                 'a' as AlphaChar,
                 'n' as AlphaChar,
                 'g' as AlphaChar,
                 'l' as AlphaChar,
                 'e' as AlphaChar,
                 0x0000,
-            ],
+            ])
+            .unwrap(),
             data: TRIE_DATA_UNREAD,
         },
         DictRec {
-            key: &[
+            key: &AlphaStr::from_slice_with_nul(&[
                 'a' as AlphaChar,
                 'z' as AlphaChar,
                 'u' as AlphaChar,
                 'r' as AlphaChar,
                 'e' as AlphaChar,
                 0x0000,
-            ],
+            ])
+            .unwrap(),
             data: TRIE_DATA_UNREAD,
         },
         DictRec {
-            key: &['b' as AlphaChar, 'a' as AlphaChar, 't' as AlphaChar, 0x0000],
+            key: &AlphaStr::from_slice_with_nul(&[
+                'b' as AlphaChar,
+                'a' as AlphaChar,
+                't' as AlphaChar,
+                0x0000,
+            ])
+            .unwrap(),
             data: TRIE_DATA_UNREAD,
         },
         DictRec {
-            key: &['b' as AlphaChar, 'e' as AlphaChar, 't' as AlphaChar, 0x0000],
+            key: &AlphaStr::from_slice_with_nul(&[
+                'b' as AlphaChar,
+                'e' as AlphaChar,
+                't' as AlphaChar,
+                0x0000,
+            ])
+            .unwrap(),
             data: TRIE_DATA_UNREAD,
         },
         DictRec {
-            key: &[
+            key: &AlphaStr::from_slice_with_nul(&[
                 'b' as AlphaChar,
                 'e' as AlphaChar,
                 's' as AlphaChar,
                 't' as AlphaChar,
                 0x0000,
-            ],
+            ])
+            .unwrap(),
             data: TRIE_DATA_UNREAD,
         },
         DictRec {
-            key: &[
+            key: &AlphaStr::from_slice_with_nul(&[
                 'h' as AlphaChar,
                 'o' as AlphaChar,
                 'm' as AlphaChar,
                 'e' as AlphaChar,
                 0x0000,
-            ],
+            ])
+            .unwrap(),
             data: TRIE_DATA_UNREAD,
         },
         DictRec {
-            key: &[
+            key: &AlphaStr::from_slice_with_nul(&[
                 'h' as AlphaChar,
                 'o' as AlphaChar,
                 'u' as AlphaChar,
                 's' as AlphaChar,
                 'e' as AlphaChar,
                 0x0000,
-            ],
+            ])
+            .unwrap(),
             data: TRIE_DATA_UNREAD,
         },
         DictRec {
-            key: &['h' as AlphaChar, 'u' as AlphaChar, 't' as AlphaChar, 0x0000],
+            key: &AlphaStr::from_slice_with_nul(&[
+                'h' as AlphaChar,
+                'u' as AlphaChar,
+                't' as AlphaChar,
+                0x0000,
+            ])
+            .unwrap(),
             data: TRIE_DATA_UNREAD,
         },
         DictRec {
-            key: &[
+            key: &AlphaStr::from_slice_with_nul(&[
                 'k' as AlphaChar,
                 'i' as AlphaChar,
                 'n' as AlphaChar,
                 'g' as AlphaChar,
                 0x0000,
-            ],
+            ])
+            .unwrap(),
             data: TRIE_DATA_UNREAD,
         },
         DictRec {
-            key: &[
+            key: &AlphaStr::from_slice_with_nul(&[
                 'k' as AlphaChar,
                 'i' as AlphaChar,
                 't' as AlphaChar,
                 'e' as AlphaChar,
                 0x0000,
-            ],
+            ])
+            .unwrap(),
             data: TRIE_DATA_UNREAD,
         },
         DictRec {
-            key: &[
+            key: &AlphaStr::from_slice_with_nul(&[
                 'n' as AlphaChar,
                 'a' as AlphaChar,
                 'm' as AlphaChar,
                 'e' as AlphaChar,
                 0x0000,
-            ],
+            ])
+            .unwrap(),
             data: TRIE_DATA_UNREAD,
         },
         DictRec {
-            key: &['n' as AlphaChar, 'e' as AlphaChar, 't' as AlphaChar, 0x0000],
+            key: &AlphaStr::from_slice_with_nul(&[
+                'n' as AlphaChar,
+                'e' as AlphaChar,
+                't' as AlphaChar,
+                0x0000,
+            ])
+            .unwrap(),
             data: TRIE_DATA_UNREAD,
         },
         DictRec {
-            key: &[
+            key: &AlphaStr::from_slice_with_nul(&[
                 'n' as AlphaChar,
                 'e' as AlphaChar,
                 't' as AlphaChar,
@@ -311,15 +350,22 @@ pub fn get_dict_src() -> [DictRec; 39] {
                 'r' as AlphaChar,
                 'k' as AlphaChar,
                 0x0000,
-            ],
+            ])
+            .unwrap(),
             data: TRIE_DATA_UNREAD,
         },
         DictRec {
-            key: &['n' as AlphaChar, 'u' as AlphaChar, 't' as AlphaChar, 0x0000],
+            key: &AlphaStr::from_slice_with_nul(&[
+                'n' as AlphaChar,
+                'u' as AlphaChar,
+                't' as AlphaChar,
+                0x0000,
+            ])
+            .unwrap(),
             data: TRIE_DATA_UNREAD,
         },
         DictRec {
-            key: &[
+            key: &AlphaStr::from_slice_with_nul(&[
                 'n' as AlphaChar,
                 'u' as AlphaChar,
                 't' as AlphaChar,
@@ -329,11 +375,12 @@ pub fn get_dict_src() -> [DictRec; 39] {
                 'l' as AlphaChar,
                 'l' as AlphaChar,
                 0x0000,
-            ],
+            ])
+            .unwrap(),
             data: TRIE_DATA_UNREAD,
         },
         DictRec {
-            key: &[
+            key: &AlphaStr::from_slice_with_nul(&[
                 'q' as AlphaChar,
                 'u' as AlphaChar,
                 'a' as AlphaChar,
@@ -342,11 +389,12 @@ pub fn get_dict_src() -> [DictRec; 39] {
                 't' as AlphaChar,
                 'y' as AlphaChar,
                 0x0000,
-            ],
+            ])
+            .unwrap(),
             data: TRIE_DATA_UNREAD,
         },
         DictRec {
-            key: &[
+            key: &AlphaStr::from_slice_with_nul(&[
                 'q' as AlphaChar,
                 'u' as AlphaChar,
                 'a' as AlphaChar,
@@ -355,11 +403,12 @@ pub fn get_dict_src() -> [DictRec; 39] {
                 'u' as AlphaChar,
                 'm' as AlphaChar,
                 0x0000,
-            ],
+            ])
+            .unwrap(),
             data: TRIE_DATA_UNREAD,
         },
         DictRec {
-            key: &[
+            key: &AlphaStr::from_slice_with_nul(&[
                 'q' as AlphaChar,
                 'u' as AlphaChar,
                 'a' as AlphaChar,
@@ -369,11 +418,12 @@ pub fn get_dict_src() -> [DictRec; 39] {
                 't' as AlphaChar,
                 'y' as AlphaChar,
                 0x0000,
-            ],
+            ])
+            .unwrap(),
             data: TRIE_DATA_UNREAD,
         },
         DictRec {
-            key: &[
+            key: &AlphaStr::from_slice_with_nul(&[
                 'q' as AlphaChar,
                 'u' as AlphaChar,
                 'a' as AlphaChar,
@@ -381,113 +431,141 @@ pub fn get_dict_src() -> [DictRec; 39] {
                 't' as AlphaChar,
                 'z' as AlphaChar,
                 0x0000,
-            ],
+            ])
+            .unwrap(),
             data: TRIE_DATA_UNREAD,
         },
         DictRec {
-            key: &[
+            key: &AlphaStr::from_slice_with_nul(&[
                 'q' as AlphaChar,
                 'u' as AlphaChar,
                 'i' as AlphaChar,
                 'c' as AlphaChar,
                 'k' as AlphaChar,
                 0x0000,
-            ],
+            ])
+            .unwrap(),
             data: TRIE_DATA_UNREAD,
         },
         DictRec {
-            key: &[
+            key: &AlphaStr::from_slice_with_nul(&[
                 'q' as AlphaChar,
                 'u' as AlphaChar,
                 'i' as AlphaChar,
                 'z' as AlphaChar,
                 0x0000,
-            ],
+            ])
+            .unwrap(),
             data: TRIE_DATA_UNREAD,
         },
         DictRec {
-            key: &['r' as AlphaChar, 'u' as AlphaChar, 'n' as AlphaChar, 0x0000],
+            key: &AlphaStr::from_slice_with_nul(&[
+                'r' as AlphaChar,
+                'u' as AlphaChar,
+                'n' as AlphaChar,
+                0x0000,
+            ])
+            .unwrap(),
             data: TRIE_DATA_UNREAD,
         },
         DictRec {
-            key: &[
+            key: &AlphaStr::from_slice_with_nul(&[
                 't' as AlphaChar,
                 'a' as AlphaChar,
                 'p' as AlphaChar,
                 'e' as AlphaChar,
                 0x0000,
-            ],
+            ])
+            .unwrap(),
             data: TRIE_DATA_UNREAD,
         },
         DictRec {
-            key: &[
+            key: &AlphaStr::from_slice_with_nul(&[
                 't' as AlphaChar,
                 'e' as AlphaChar,
                 's' as AlphaChar,
                 't' as AlphaChar,
                 0x0000,
-            ],
+            ])
+            .unwrap(),
             data: TRIE_DATA_UNREAD,
         },
         DictRec {
-            key: &[
+            key: &AlphaStr::from_slice_with_nul(&[
                 'w' as AlphaChar,
                 'h' as AlphaChar,
                 'a' as AlphaChar,
                 't' as AlphaChar,
                 0x0000,
-            ],
+            ])
+            .unwrap(),
             data: TRIE_DATA_UNREAD,
         },
         DictRec {
-            key: &[
+            key: &AlphaStr::from_slice_with_nul(&[
                 'w' as AlphaChar,
                 'h' as AlphaChar,
                 'e' as AlphaChar,
                 'n' as AlphaChar,
                 0x0000,
-            ],
+            ])
+            .unwrap(),
             data: TRIE_DATA_UNREAD,
         },
         DictRec {
-            key: &[
+            key: &AlphaStr::from_slice_with_nul(&[
                 'w' as AlphaChar,
                 'h' as AlphaChar,
                 'e' as AlphaChar,
                 'r' as AlphaChar,
                 'e' as AlphaChar,
                 0x0000,
-            ],
+            ])
+            .unwrap(),
             data: TRIE_DATA_UNREAD,
         },
         DictRec {
-            key: &[
+            key: &AlphaStr::from_slice_with_nul(&[
                 'w' as AlphaChar,
                 'h' as AlphaChar,
                 'i' as AlphaChar,
                 'c' as AlphaChar,
                 'h' as AlphaChar,
                 0x0000,
-            ],
+            ])
+            .unwrap(),
             data: TRIE_DATA_UNREAD,
         },
         DictRec {
-            key: &['w' as AlphaChar, 'h' as AlphaChar, 'o' as AlphaChar, 0x0000],
+            key: &AlphaStr::from_slice_with_nul(&[
+                'w' as AlphaChar,
+                'h' as AlphaChar,
+                'o' as AlphaChar,
+                0x0000,
+            ])
+            .unwrap(),
             data: TRIE_DATA_UNREAD,
         },
         DictRec {
-            key: &['w' as AlphaChar, 'h' as AlphaChar, 'y' as AlphaChar, 0x0000],
+            key: &AlphaStr::from_slice_with_nul(&[
+                'w' as AlphaChar,
+                'h' as AlphaChar,
+                'y' as AlphaChar,
+                0x0000,
+            ])
+            .unwrap(),
             data: TRIE_DATA_UNREAD,
         },
         DictRec {
-            key: &[
+            key: &AlphaStr::from_slice_with_nul(&[
                 'z' as AlphaChar,
                 'e' as AlphaChar,
                 'b' as AlphaChar,
                 'r' as AlphaChar,
                 'a' as AlphaChar,
                 0x0000,
-            ],
+            ])
+            .unwrap(),
             data: TRIE_DATA_UNREAD,
         },
         //     {(AlphaChar *)NULL,          TRIE_DATA_ERROR},

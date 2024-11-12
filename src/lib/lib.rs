@@ -15,8 +15,10 @@ pub mod fileutils;
 pub mod tail;
 pub mod trie;
 // pub mod trie_char_string;
+pub mod alpha_str;
 pub mod trie_string;
 
+pub use crate::alpha_str::AlphaStr;
 pub use crate::error::{DatrieError, ErrorKind};
 
 pub type DatrieResult<T> = Result<T, DatrieError>;

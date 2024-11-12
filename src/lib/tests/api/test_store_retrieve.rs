@@ -59,7 +59,7 @@ fn test_store_retrieve() {
         let mut dict_src = get_dict_src();
         for dict_p in &dict_src {
             //     for (dict_p = dict_src; dict_p->key; dict_p++) {
-            if Trie::store(&mut test_trie, dict_p.key.as_ptr(), dict_p.data) != DA_TRUE {
+            if Trie::store(&mut test_trie, dict_p.key, dict_p.data) != DA_TRUE {
                 panic!(
                     "Failed to add key '{:?}', data {}.\n",
                     dict_p.key, dict_p.data
@@ -73,7 +73,7 @@ fn test_store_retrieve() {
         //     is_failed = FALSE;
         for dict_p in &dict_src {
             let mut trie_data = 0;
-            if Trie::retrieve(&test_trie, dict_p.key.as_ptr(), &mut trie_data) != DA_TRUE {
+            if Trie::retrieve(&test_trie, dict_p.key, &mut trie_data) != DA_TRUE {
                 panic!("Failed to retrieve key '{:?}'.\n", dict_p.key);
             }
             assert_eq!(
@@ -105,7 +105,7 @@ fn test_store_retrieve() {
                 }
             }
             println!("Deleting '{:?}'", dict_src[i].key);
-            if Trie::delete(&mut test_trie, dict_src[i].key.as_ptr()) != DA_TRUE {
+            if Trie::delete(&mut test_trie, dict_src[i].key) != DA_TRUE {
                 panic!("Failed to delete '{:?}'", dict_src[i].key);
                 //             is_failed = TRUE;
             }
@@ -126,7 +126,7 @@ fn test_store_retrieve() {
             }
 
             let mut trie_data = 0;
-            if Trie::retrieve(&test_trie, dict_p.key.as_ptr(), &mut trie_data) != DA_TRUE {
+            if Trie::retrieve(&test_trie, dict_p.key, &mut trie_data) != DA_TRUE {
                 panic!("Failed to retrieve key {:?}'.\n", dict_p.key);
                 //             is_failed = TRUE;
             }

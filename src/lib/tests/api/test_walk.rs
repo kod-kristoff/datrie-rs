@@ -44,83 +44,92 @@ use crate::utils::{DictRec, TRIE_DATA_ERROR, TRIE_DATA_UNREAD};
 //  *                              +---g-> (24) -r-> (25) -e-> (26) -s-> (27) -s-> [28]
 //  *
 //  */
-const WALK_DICT: [DictRec; 6] = [
-    DictRec {
-        key: &[
-            'p' as AlphaChar,
-            'o' as AlphaChar,
-            'o' as AlphaChar,
-            'l' as AlphaChar,
-            0x0000,
-        ],
-        data: TRIE_DATA_UNREAD,
-    },
-    DictRec {
-        key: &[
-            'p' as AlphaChar,
-            'r' as AlphaChar,
-            'i' as AlphaChar,
-            'z' as AlphaChar,
-            'e' as AlphaChar,
-            0x0000,
-        ],
-        data: TRIE_DATA_UNREAD,
-    },
-    DictRec {
-        key: &[
-            'p' as AlphaChar,
-            'r' as AlphaChar,
-            'e' as AlphaChar,
-            'v' as AlphaChar,
-            'i' as AlphaChar,
-            'e' as AlphaChar,
-            'w' as AlphaChar,
-            0x0000,
-        ],
-        data: TRIE_DATA_UNREAD,
-    },
-    DictRec {
-        key: &[
-            'p' as AlphaChar,
-            'r' as AlphaChar,
-            'e' as AlphaChar,
-            'p' as AlphaChar,
-            'a' as AlphaChar,
-            'r' as AlphaChar,
-            'e' as AlphaChar,
-            0x0000,
-        ],
-        data: TRIE_DATA_UNREAD,
-    },
-    DictRec {
-        key: &[
-            'p' as AlphaChar,
-            'r' as AlphaChar,
-            'o' as AlphaChar,
-            'd' as AlphaChar,
-            'u' as AlphaChar,
-            'c' as AlphaChar,
-            'e' as AlphaChar,
-            0x0000,
-        ],
-        data: TRIE_DATA_UNREAD,
-    },
-    DictRec {
-        key: &[
-            'p' as AlphaChar,
-            'r' as AlphaChar,
-            'o' as AlphaChar,
-            'g' as AlphaChar,
-            'r' as AlphaChar,
-            'e' as AlphaChar,
-            's' as AlphaChar,
-            's' as AlphaChar,
-            0x0000,
-        ],
-        data: TRIE_DATA_UNREAD,
-    },
-    //     {(AlphaChar *)NULL,          TRIE_DATA_ERROR},
-];
+fn get_walk_dict() -> [DictRec; 6] {
+    [
+        DictRec {
+            key: &AlphaStr::from_slice_with_nul(&[
+                'p' as AlphaChar,
+                'o' as AlphaChar,
+                'o' as AlphaChar,
+                'l' as AlphaChar,
+                0x0000,
+            ])
+            .unwrap(),
+            data: TRIE_DATA_UNREAD,
+        },
+        DictRec {
+            key: &AlphaStr::from_slice_with_nul(&[
+                'p' as AlphaChar,
+                'r' as AlphaChar,
+                'i' as AlphaChar,
+                'z' as AlphaChar,
+                'e' as AlphaChar,
+                0x0000,
+            ])
+            .unwrap(),
+
+            data: TRIE_DATA_UNREAD,
+        },
+        DictRec {
+            key: &AlphaStr::from_slice_with_nul(&[
+                'p' as AlphaChar,
+                'r' as AlphaChar,
+                'e' as AlphaChar,
+                'v' as AlphaChar,
+                'i' as AlphaChar,
+                'e' as AlphaChar,
+                'w' as AlphaChar,
+                0x0000,
+            ])
+            .unwrap(),
+            data: TRIE_DATA_UNREAD,
+        },
+        DictRec {
+            key: &AlphaStr::from_slice_with_nul(&[
+                'p' as AlphaChar,
+                'r' as AlphaChar,
+                'e' as AlphaChar,
+                'p' as AlphaChar,
+                'a' as AlphaChar,
+                'r' as AlphaChar,
+                'e' as AlphaChar,
+                0x0000,
+            ])
+            .unwrap(),
+            data: TRIE_DATA_UNREAD,
+        },
+        DictRec {
+            key: &AlphaStr::from_slice_with_nul(&[
+                'p' as AlphaChar,
+                'r' as AlphaChar,
+                'o' as AlphaChar,
+                'd' as AlphaChar,
+                'u' as AlphaChar,
+                'c' as AlphaChar,
+                'e' as AlphaChar,
+                0x0000,
+            ])
+            .unwrap(),
+            data: TRIE_DATA_UNREAD,
+        },
+        DictRec {
+            key: &AlphaStr::from_slice_with_nul(&[
+                'p' as AlphaChar,
+                'r' as AlphaChar,
+                'o' as AlphaChar,
+                'g' as AlphaChar,
+                'r' as AlphaChar,
+                'e' as AlphaChar,
+                's' as AlphaChar,
+                's' as AlphaChar,
+                0x0000,
+            ])
+            .unwrap(),
+            data: TRIE_DATA_UNREAD,
+        },
+        //     {(AlphaChar *)NULL,          TRIE_DATA_ERROR},
+    ]
+}
 
 // static Bool
 unsafe fn is_walkables_include(
@@ -161,7 +170,7 @@ const ALPHABET_SIZE: usize = 256;
 use datrie::{
     alpha_map::AlphaChar,
     trie::{Trie, TrieState, DA_TRUE},
-    DatrieResult,
+    AlphaStr, DatrieResult,
 };
 
 use crate::utils::{en_trie_new, msg_step};
@@ -185,11 +194,11 @@ fn test_walk() -> DatrieResult<()> {
         //     }
 
         /* store */
-        let walk_dict = WALK_DICT;
+        let walk_dict = get_walk_dict();
         for dict_p in &walk_dict {
             //     for (dict_p = walk_dict; dict_p->key; dict_p++) {
             assert_eq!(
-                Trie::store(&mut test_trie, dict_p.key.as_ptr(), dict_p.data),
+                Trie::store(&mut test_trie, dict_p.key, dict_p.data),
                 DA_TRUE,
                 "Failed to add key '{:?}', data {}.\n",
                 dict_p.key,

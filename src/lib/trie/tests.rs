@@ -1,4 +1,5 @@
 use crate::trie::AlphaChar;
+use crate::AlphaStr;
 use crate::{trie::Trie, DatrieResult};
 
 use crate::alpha_map::AlphaMap;
@@ -18,7 +19,11 @@ fn serialize_to_slice_works() -> DatrieResult<()> {
     alpha_map.add_range(0x00, 0xff)?;
     let mut trie = Trie::new(&alpha_map)?;
     unsafe {
-        Trie::store(&mut trie, ['a' as AlphaChar, 0x0000].as_ptr(), 2);
+        Trie::store(
+            &mut trie,
+            AlphaStr::from_slice_with_nul(&['a' as AlphaChar, 0x0000]).unwrap(),
+            2,
+        );
     }
     let size = trie.get_serialized_size();
     let mut serialized_data = Vec::with_capacity(size);

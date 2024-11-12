@@ -32,24 +32,32 @@ extern "C" {
 
 #[derive(Debug, Clone, Copy)]
 struct DictEntry {
-    key: [AlphaChar; 4],
+    key: &'static AlphaStr,
     data: TrieData,
     is_checked: bool,
 }
 
 // /* Dictionary source */
-const SOURCE: [DictEntry; 2] = [
-    DictEntry {
-        key: ['1' as AlphaChar, '2' as AlphaChar, 0, 0],
-        data: 1,
-        is_checked: false,
-    },
-    DictEntry {
-        key: ['1' as AlphaChar, '2' as AlphaChar, '3' as AlphaChar, 0],
-        data: 2,
-        is_checked: false,
-    },
-];
+fn get_source() -> [DictEntry; 2] {
+    [
+        DictEntry {
+            key: &AlphaStr::from_slice_with_nul(&['1' as AlphaChar, '2' as AlphaChar, 0]).unwrap(),
+            data: 1,
+            is_checked: false,
+        },
+        DictEntry {
+            key: &AlphaStr::from_slice_with_nul(&[
+                '1' as AlphaChar,
+                '2' as AlphaChar,
+                '3' as AlphaChar,
+                0,
+            ])
+            .unwrap(),
+            data: 2,
+            is_checked: false,
+        },
+    ]
+}
 
 unsafe fn dump_key_data(key: *const AlphaChar, data: TrieData) {
     print!("[");
@@ -112,7 +120,7 @@ fn is_all_checked(source: &[DictEntry]) -> bool {
 use datrie::{
     alpha_map::{alpha_char_strcmp, AlphaChar, AlphaMap},
     trie::{Trie, TrieData, TrieIterator, TrieState, DA_FALSE},
-    DatrieResult,
+    AlphaStr, DatrieResult,
 };
 
 use crate::utils::msg_step;
@@ -131,9 +139,9 @@ fn test_byte_list() -> DatrieResult<()> {
         let mut test_trie = Trie::new(&alpha_map)?;
 
         msg_step("Storing entries to test trie");
-        let mut source = SOURCE;
+        let mut source = get_source();
         for dict_p in &source {
-            if Trie::store(&mut test_trie, dict_p.key.as_ptr(), dict_p.data) == 0 {
+            if Trie::store(&mut test_trie, dict_p.key, dict_p.data) == 0 {
                 panic!(
                     "Fail to store entry to test trie: {:?}->{}",
                     dict_p.key, dict_p.data

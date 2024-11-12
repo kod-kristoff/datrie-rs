@@ -24,7 +24,7 @@
 use datrie::{
     alpha_map::AlphaChar,
     trie::{Trie, DA_TRUE},
-    DatrieResult,
+    AlphaStr, DatrieResult,
 };
 
 use crate::utils::{en_trie_new, get_dict_src, msg_step, TRIE_DATA_UNREAD};
@@ -40,7 +40,7 @@ fn test_nonalpha() -> DatrieResult<()> {
         let dict_src = get_dict_src();
         for dict_p in &dict_src {
             assert_eq!(
-                Trie::store(&mut test_trie, dict_p.key.as_ptr(), dict_p.data),
+                Trie::store(&mut test_trie, dict_p.key, dict_p.data),
                 DA_TRUE,
                 "Failed to add key '{:?}', data {}.\n",
                 dict_p.key,
@@ -50,7 +50,7 @@ fn test_nonalpha() -> DatrieResult<()> {
 
         //     /* test storing keys with non-alphabet chars */
         let nonalpha_src = [
-            &[
+            &AlphaStr::from_slice_with_nul(&[
                 'a' as AlphaChar,
                 '6' as AlphaChar,
                 'a' as AlphaChar,
@@ -58,8 +58,9 @@ fn test_nonalpha() -> DatrieResult<()> {
                 'u' as AlphaChar,
                 's' as AlphaChar,
                 0x0000,
-            ],
-            &[
+            ])
+            .unwrap(),
+            &AlphaStr::from_slice_with_nul(&[
                 'a' as AlphaChar,
                 '5' as AlphaChar,
                 'a' as AlphaChar,
@@ -67,20 +68,21 @@ fn test_nonalpha() -> DatrieResult<()> {
                 'u' as AlphaChar,
                 's' as AlphaChar,
                 0x0000,
-            ],
+            ])
+            .unwrap(),
         ];
 
         let mut trie_data = 0;
         for nonalpha_key in nonalpha_src {
             assert_ne!(
-                Trie::retrieve(&test_trie, nonalpha_key.as_ptr(), &mut trie_data),
+                Trie::retrieve(&test_trie, nonalpha_key, &mut trie_data),
                 DA_TRUE,
                 "False duplication on key '{:?}', with existing data {}.\n",
                 nonalpha_key,
                 trie_data
             );
             assert_ne!(
-                Trie::store(&mut test_trie, nonalpha_key.as_ptr(), TRIE_DATA_UNREAD),
+                Trie::store(&mut test_trie, nonalpha_key, TRIE_DATA_UNREAD),
                 DA_TRUE,
                 "Wrongly added key '{:?}' containing non-alphanet char\n",
                 nonalpha_key

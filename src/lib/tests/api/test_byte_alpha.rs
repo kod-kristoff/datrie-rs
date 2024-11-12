@@ -26,7 +26,7 @@
 use datrie::{
     alpha_map::AlphaMap,
     trie::{Trie, TrieData, DA_TRUE},
-    DatrieResult,
+    AlphaStr, DatrieResult,
 };
 
 use crate::utils::msg_step;
@@ -47,9 +47,9 @@ fn test_byte_alpha() -> DatrieResult<()> {
         let mut test_trie = Trie::new(&alpha_map)?;
 
         msg_step("Storing key to test trie");
-        let key = &[0xff, 0xff, 0];
+        let key = AlphaStr::from_slice_with_nul(&[0xff, 0xff, 0]).unwrap();
         assert_eq!(
-            Trie::store(&mut test_trie, key.as_ptr(), TEST_DATA),
+            Trie::store(&mut test_trie, key, TEST_DATA),
             DA_TRUE,
             "Fail to store key to test trie\n"
         );
@@ -57,7 +57,7 @@ fn test_byte_alpha() -> DatrieResult<()> {
         msg_step("Retrieving data from test trie");
         let mut data = 0;
         assert_eq!(
-            Trie::retrieve(&test_trie, key.as_ptr(), &mut data),
+            Trie::retrieve(&test_trie, key, &mut data),
             DA_TRUE,
             "Fail to retrieve key from test trie\n"
         );
