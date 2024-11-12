@@ -36,7 +36,7 @@ pub struct Trie {
     pub alpha_map: AlphaMap,
     pub da: Box<DArray>,
     pub tail: Box<Tail>,
-    pub is_dirty: Bool,
+    pub is_dirty: bool,
 }
 pub type TrieEnumFunc =
     Option<unsafe extern "C" fn(*const AlphaChar, TrieData, *mut libc::c_void) -> Bool>;
@@ -65,7 +65,7 @@ impl Trie {
             alpha_map,
             da,
             tail,
-            is_dirty: DA_TRUE,
+            is_dirty: true,
         })
     }
 
@@ -98,7 +98,7 @@ impl Trie {
             alpha_map,
             da,
             tail,
-            is_dirty: DA_FALSE,
+            is_dirty: false,
         })
     }
 }
@@ -135,32 +135,32 @@ impl Trie {
         self.alpha_map.serialize(&mut writer)?;
         self.da.serialize(&mut writer)?;
         self.tail.serialize(&mut writer)?;
-        self.is_dirty = DA_FALSE;
+        self.is_dirty = false;
         Ok(())
     }
     pub fn serialize_to_slice(&mut self, buf: &mut [u8]) -> DatrieResult<usize> {
         let mut start = self.alpha_map.serialize_to_slice(buf)?;
         start += self.da.serialize_to_slice(&mut buf[start..])?;
         start += self.tail.serialize_to_slice(&mut buf[start..])?;
-        self.is_dirty = DA_FALSE;
+        self.is_dirty = false;
         Ok(start)
     }
 
-    pub fn is_dirty(&self) -> Bool {
+    pub fn is_dirty(&self) -> bool {
         self.is_dirty
     }
-    pub unsafe fn retrieve(&self, key: &AlphaStr, o_data: *mut TrieData) -> Bool {
+    pub unsafe fn retrieve(&self, key: &AlphaStr, o_data: *mut TrieData) -> bool {
         let mut s = self.da.get_root();
         let key_slice = key.to_slice_with_nul();
         let mut p = key_slice;
 
         while self.da.get_base(s) >= 0 as libc::c_int {
             let Some(tc) = self.alpha_map.char_to_trie(p[0]) else {
-                return DA_FALSE;
+                return false;
             };
 
             if self.da.walk(&mut s, tc as TrieChar) as u64 == 0 {
-                return DA_FALSE;
+                return false;
             }
             if p[0] == 0 {
                 break;
@@ -171,11 +171,11 @@ impl Trie {
         let mut suffix_idx: libc::c_short = 0;
         loop {
             let Some(tc_0) = self.alpha_map.char_to_trie(p[0]) else {
-                return DA_FALSE;
+                return false;
             };
 
             if unsafe { self.tail.walk_char(s, &mut suffix_idx, tc_0 as TrieChar) } as u64 == 0 {
-                return DA_FALSE;
+                return false;
             }
 
             if p[0] == 0 {
@@ -188,7 +188,7 @@ impl Trie {
                 *o_data = self.tail.get_data(s);
             }
         }
-        DA_TRUE
+        true
     }
 
     pub fn store(&mut self, key: &AlphaStr, data: TrieData) -> bool {
@@ -255,7 +255,7 @@ impl Trie {
             return false;
         }
         self.tail.set_data(t, data);
-        self.is_dirty = DA_TRUE;
+        self.is_dirty = true;
         true
     }
     unsafe fn branch_in_branch(
@@ -274,7 +274,7 @@ impl Trie {
         let new_tail = self.tail.add_suffix(suffix);
         self.tail.set_data(new_tail, data);
         self.da.set_base(new_da, -new_tail);
-        self.is_dirty = DA_TRUE;
+        self.is_dirty = true;
         true
     }
     unsafe fn branch_in_tail(
@@ -324,7 +324,7 @@ impl Trie {
 }
 
 impl Trie {
-    pub fn delete(&mut self, key: &AlphaStr) -> Bool {
+    pub fn delete(&mut self, key: &AlphaStr) -> bool {
         // let mut s: TrieIndex = 0;
         // let mut t: TrieIndex = 0;
         // let mut suffix_idx: libc::c_short = 0;
@@ -334,10 +334,10 @@ impl Trie {
         let mut p = key_slice;
         while (*self.da).get_base(s) >= 0 as libc::c_int {
             let Some(tc) = self.alpha_map.char_to_trie(p[0]) else {
-                return DA_FALSE;
+                return false;
             };
             if unsafe { self.da.walk(&mut s, tc as TrieChar) } as u64 == 0 {
-                return DA_FALSE;
+                return false;
             }
             if p[0] == 0 {
                 break;
@@ -349,10 +349,10 @@ impl Trie {
         let mut suffix_idx: libc::c_short = 0;
         loop {
             let Some(tc_0) = self.alpha_map.char_to_trie(p[0]) else {
-                return DA_FALSE;
+                return false;
             };
             if unsafe { self.tail.walk_char(t, &mut suffix_idx, tc_0 as TrieChar) as u64 == 0 } {
-                return DA_FALSE;
+                return false;
             }
             if p[0] == 0 {
                 break;
@@ -364,8 +364,8 @@ impl Trie {
         }
         self.da.set_base(s, 0 as libc::c_int);
         self.da.prune(s);
-        self.is_dirty = DA_TRUE;
-        DA_TRUE
+        self.is_dirty = true;
+        true
     }
 
     pub unsafe fn enumerate(
@@ -373,23 +373,24 @@ impl Trie {
         // mut trie: *const Trie,
         enum_func: TrieEnumFunc,
         user_data: *mut libc::c_void,
-    ) -> Bool {
+    ) -> bool {
         // let mut root: *mut TrieState = 0 as *mut TrieState;
         // let mut iter: *mut TrieIterator = 0 as *mut TrieIterator;
-        let mut cont: Bool = DA_TRUE;
+        let mut cont: bool = true;
         let root = self.root();
-        if root.is_null() as libc::c_int as libc::c_long != 0 {
-            return DA_FALSE;
+        if root.is_null() {
+            return false;
         }
         let iter = TrieIterator::new(root);
-        if iter.is_null() as libc::c_int as libc::c_long != 0 {
+        if iter.is_null() {
             TrieState::free(root);
-            DA_FALSE
+            false
         } else {
-            while cont as libc::c_uint != 0 && TrieIterator::next(iter) as libc::c_uint != 0 {
+            while cont && TrieIterator::next(iter) as libc::c_uint != 0 {
                 let key: *mut AlphaChar = TrieIterator::get_key(iter);
                 let data: TrieData = TrieIterator::get_data(iter);
-                cont = enum_func.expect("non-null function pointer")(key, data, user_data);
+                cont =
+                    enum_func.expect("non-null function pointer")(key, data, user_data) == DA_TRUE;
                 free(key as *mut libc::c_void);
             }
             TrieIterator::free(iter);

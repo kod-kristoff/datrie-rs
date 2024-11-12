@@ -109,7 +109,7 @@ pub unsafe extern "C" fn trie_fwrite(trie: *mut Trie, file: *mut FILE) -> libc::
 }
 #[no_mangle]
 pub unsafe extern "C" fn trie_is_dirty(trie: *const Trie) -> Bool {
-    (*trie).is_dirty
+    (*trie).is_dirty as Bool
 }
 #[no_mangle]
 pub unsafe extern "C" fn trie_retrieve(
@@ -169,7 +169,7 @@ pub unsafe extern "C" fn trie_enumerate(
         return DA_FALSE;
     }
     let trie = unsafe { &*trie };
-    trie.enumerate(enum_func, user_data)
+    trie.enumerate(enum_func, user_data) as Bool
 }
 #[no_mangle]
 pub unsafe extern "C" fn trie_root(trie: *const Trie) -> *mut TrieState {
