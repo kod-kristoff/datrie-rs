@@ -16,18 +16,18 @@ pub struct NulError(usize, Vec<TrieChar>);
 
 /// An error indicating that a nul byte was not in the expected position.
 ///
-/// The vector used to create a [`CString`] must have one and only one nul byte,
+/// The vector used to create a [`TrieCharString`] must have one and only one nul byte,
 /// positioned at the end.
 ///
-/// This error is created by the [`CString::from_vec_with_nul`] method.
+/// This error is created by the [`TrieCharString::from_vec_with_nul`] method.
 /// See its documentation for more.
 ///
 /// # Examples
 ///
 /// ```
-/// use std::ffi::{CString, FromVecWithNulError};
+/// use datrie::trie_str::{TrieCharString, FromVecWithNulError};
 ///
-/// let _: FromVecWithNulError = CString::from_vec_with_nul(b"f\0oo".to_vec()).unwrap_err();
+/// let _: FromVecWithNulError = TrieCharString::from_vec_with_nul(b"f\0oo".to_vec()).unwrap_err();
 /// ```
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct FromVecWithNulError {
@@ -36,19 +36,19 @@ pub struct FromVecWithNulError {
 }
 
 impl FromVecWithNulError {
-    /// Returns a slice of [`u8`]s bytes that were attempted to convert to a [`CString`].
+    /// Returns a slice of [`u8`]s bytes that were attempted to convert to a [`TrieCharString`].
     ///
     /// # Examples
     ///
     /// Basic usage:
     ///
     /// ```
-    /// use std::ffi::CString;
+    /// use datrie::trie_str::TrieCharString;
     ///
     /// // Some invalid bytes in a vector
     /// let bytes = b"f\0oo".to_vec();
     ///
-    /// let value = CString::from_vec_with_nul(bytes.clone());
+    /// let value = TrieCharString::from_vec_with_nul(bytes.clone());
     ///
     /// assert_eq!(&bytes[..], value.unwrap_err().as_bytes());
     /// ```
@@ -57,7 +57,7 @@ impl FromVecWithNulError {
         &self.bytes[..]
     }
 
-    /// Returns the bytes that were attempted to convert to a [`CString`].
+    /// Returns the bytes that were attempted to convert to a [`TrieCharString`].
     ///
     /// This method is carefully constructed to avoid allocation. It will
     /// consume the error, moving out the bytes, so that a copy of the bytes
@@ -68,12 +68,12 @@ impl FromVecWithNulError {
     /// Basic usage:
     ///
     /// ```
-    /// use std::ffi::CString;
+    /// use datrie::trie_str::TrieCharString;
     ///
     /// // Some invalid bytes in a vector
     /// let bytes = b"f\0oo".to_vec();
     ///
-    /// let value = CString::from_vec_with_nul(bytes.clone());
+    /// let value = TrieCharString::from_vec_with_nul(bytes.clone());
     ///
     /// assert_eq!(bytes, value.unwrap_err().into_bytes());
     /// ```
@@ -104,7 +104,7 @@ impl TrieCharString {
     /// # Examples
     ///
     /// ```
-    /// use datrie::trie::trie_str::TrieCharString;
+    /// use datrie::trie_str::TrieCharString;
     ///
     /// let raw = b"foo".to_vec();
     /// unsafe {
@@ -138,10 +138,10 @@ impl TrieCharString {
     /// # Examples
     ///
     /// ```
-    /// use std::ffi::{TrieCharString, TrieCharStr};
+    /// use datrie::trie_str::{TrieCharString, TrieCharStr};
     ///
     /// let c_string = TrieCharString::new(b"foo".to_vec()).expect("TrieCharString::new failed");
-    /// let cstr = c_string.as_c_str();
+    /// let cstr = c_string.as_trie_str();
     /// assert_eq!(cstr,
     ///            TrieCharStr::from_bytes_with_nul(b"foo\0").expect("TrieCharStr::from_bytes_with_nul failed"));
     /// ```
@@ -184,7 +184,7 @@ impl TrieCharString {
     /// # Examples
     ///
     /// ```
-    /// use datrie::trie::TrieCharString;
+    /// use datrie::trie_str::TrieCharString;
     ///
     /// let c_string = TrieCharString::new("foo").expect("TrieCharString::new failed");
     /// let bytes = c_string.as_bytes_with_nul();
@@ -230,7 +230,7 @@ impl TrieCharString {
     /// ownership with `from_raw`:
     ///
     /// ```ignore (extern-declaration)
-    /// use std::ffi::TrieCharString;
+    /// use datrie::trie_str::TrieCharString;
     /// use std::os::raw::c_char;
     ///
     /// extern "C" {
@@ -260,7 +260,7 @@ impl TrieCharString {
             }
         }
     }
-    /// Converts a <code>[Vec]<[u8]></code> to a [`CString`] without checking the
+    /// Converts a <code>[Vec]<[u8]></code> to a [`TrieCharString`] without checking the
     /// invariants on the given [`Vec`].
     ///
     /// # Safety
@@ -271,10 +271,10 @@ impl TrieCharString {
     /// # Example
     ///
     /// ```
-    /// use std::ffi::CString;
+    /// use datrie::trie_str::TrieCharString;
     /// assert_eq!(
-    ///     unsafe { CString::from_vec_with_nul_unchecked(b"abc\0".to_vec()) },
-    ///     unsafe { CString::from_vec_unchecked(b"abc".to_vec()) }
+    ///     unsafe { TrieCharString::from_vec_with_nul_unchecked(b"abc\0".to_vec()) },
+    ///     unsafe { TrieCharString::from_vec_unchecked(b"abc".to_vec()) }
     /// );
     /// ```
     #[must_use]
@@ -289,7 +289,7 @@ impl TrieCharString {
         }
     }
 
-    /// Attempts to converts a <code>[Vec]<[u8]></code> to a [`CString`].
+    /// Attempts to converts a <code>[Vec]<[u8]></code> to a [`TrieCharString`].
     ///
     /// Runtime checks are present to ensure there is only one nul byte in the
     /// [`Vec`], its last element.
@@ -301,26 +301,26 @@ impl TrieCharString {
     ///
     /// # Examples
     ///
-    /// A successful conversion will produce the same result as [`CString::new`]
+    /// A successful conversion will produce the same result as [`TrieCharString::new`]
     /// when called without the ending nul byte.
     ///
     /// ```
-    /// use std::ffi::CString;
+    /// use datrie::trie_str::TrieCharString;
     /// assert_eq!(
-    ///     CString::from_vec_with_nul(b"abc\0".to_vec())
-    ///         .expect("CString::from_vec_with_nul failed"),
-    ///     CString::new(b"abc".to_vec()).expect("CString::new failed")
+    ///     TrieCharString::from_vec_with_nul(b"abc\0".to_vec())
+    ///         .expect("TrieCharString::from_vec_with_nul failed"),
+    ///     TrieCharString::new(b"abc".to_vec()).expect("TrieCharString::new failed")
     /// );
     /// ```
     ///
     /// An incorrectly formatted [`Vec`] will produce an error.
     ///
     /// ```
-    /// use std::ffi::{CString, FromVecWithNulError};
+    /// use datrie::trie_str::{TrieCharString, FromVecWithNulError};
     /// // Interior nul byte
-    /// let _: FromVecWithNulError = CString::from_vec_with_nul(b"a\0bc".to_vec()).unwrap_err();
+    /// let _: FromVecWithNulError = TrieCharString::from_vec_with_nul(b"a\0bc".to_vec()).unwrap_err();
     /// // No nul byte
-    /// let _: FromVecWithNulError = CString::from_vec_with_nul(b"abc".to_vec()).unwrap_err();
+    /// let _: FromVecWithNulError = TrieCharString::from_vec_with_nul(b"abc".to_vec()).unwrap_err();
     /// ```
     pub fn from_vec_with_nul(v: Vec<u8>) -> Result<Self, FromVecWithNulError> {
         let nul_pos = memchr::memchr(0, &v);
@@ -401,7 +401,7 @@ pub struct TrieCharStr {
 /// # Examples
 ///
 /// ```
-/// use std::ffi::{TrieCharStr, FromBytesWithNulError};
+/// use datrie::trie_str::{TrieCharStr, FromBytesWithNulError};
 ///
 /// let _: FromBytesWithNulError = TrieCharStr::from_bytes_with_nul(b"f\0oo").unwrap_err();
 /// ```
@@ -505,7 +505,7 @@ impl TrieCharStr {
     ///
     /// # Examples
     /// ```
-    /// use std::ffi::TrieCharStr;
+    /// use datrie::trie_str::TrieCharStr;
     ///
     /// let mut buffer = [0u8; 16];
     /// unsafe {
@@ -516,7 +516,7 @@ impl TrieCharStr {
     /// }
     /// // Attempt to extract a C nul-terminated string from the buffer.
     /// let c_str = TrieCharStr::from_bytes_until_nul(&buffer[..]).unwrap();
-    /// assert_eq!(c_str.to_str().unwrap(), "AAAAAAAA");
+    /// assert_eq!(c_str.to_bytes(), b"AAAAAAAA");
     /// ```
     ///
     pub fn from_bytes_until_nul(bytes: &[u8]) -> Result<&TrieCharStr, FromBytesUntilNulError> {
@@ -547,7 +547,7 @@ impl TrieCharStr {
     /// # Examples
     ///
     /// ```
-    /// use std::ffi::TrieCharStr;
+    /// use datrie::trie_str::TrieCharStr;
     ///
     /// let cstr = TrieCharStr::from_bytes_with_nul(b"hello\0");
     /// assert!(cstr.is_ok());
@@ -556,7 +556,7 @@ impl TrieCharStr {
     /// Creating a `TrieCharStr` without a trailing nul terminator is an error:
     ///
     /// ```
-    /// use std::ffi::TrieCharStr;
+    /// use datrie::trie_str::TrieCharStr;
     ///
     /// let cstr = TrieCharStr::from_bytes_with_nul(b"hello");
     /// assert!(cstr.is_err());
@@ -565,7 +565,7 @@ impl TrieCharStr {
     /// Creating a `TrieCharStr` with an interior nul byte is an error:
     ///
     /// ```
-    /// use std::ffi::TrieCharStr;
+    /// use datrie::trie_str::TrieCharStr;
     ///
     /// let cstr = TrieCharStr::from_bytes_with_nul(b"he\0llo\0");
     /// assert!(cstr.is_err());
@@ -629,7 +629,7 @@ impl TrieCharStr {
     /// # #![allow(unused_must_use)]
     /// # #![cfg_attr(bootstrap, expect(temporary_cstring_as_ptr))]
     /// # #![cfg_attr(not(bootstrap), expect(dangling_pointers_from_temporaries))]
-    /// use std::ffi::TrieCharString;
+    /// use datrie::trie_str::TrieCharString;
     ///
     /// // Do not do this:
     /// let ptr = TrieCharString::new("Hello").expect("TrieCharString::new failed").as_ptr();
@@ -647,7 +647,7 @@ impl TrieCharStr {
     ///
     /// ```no_run
     /// # #![allow(unused_must_use)]
-    /// use std::ffi::TrieCharString;
+    /// use datrie::trie_str::TrieCharString;
     ///
     /// let hello = TrieCharString::new("Hello").expect("TrieCharString::new failed");
     /// let ptr = hello.as_ptr();
@@ -676,7 +676,7 @@ impl TrieCharStr {
     /// # Examples
     ///
     /// ```
-    /// use std::ffi::TrieCharStr;
+    /// use datrie::trie_str::TrieCharStr;
     ///
     /// let cstr = TrieCharStr::from_bytes_with_nul(b"foo\0").expect("TrieCharStr::from_bytes_with_nul failed");
     /// assert_eq!(cstr.to_bytes(), b"foo");
@@ -695,15 +695,15 @@ impl TrieCharStr {
     /// # Examples
     ///
     /// ```
-    /// use std::ffi::CStr;
-    /// # use std::ffi::FromBytesWithNulError;
+    /// use datrie::trie_str::TrieCharStr;
+    /// # use datrie::trie_str::FromBytesWithNulError;
     ///
     /// # fn main() { test().unwrap(); }
     /// # fn test() -> Result<(), FromBytesWithNulError> {
-    /// let cstr = CStr::from_bytes_with_nul(b"foo\0")?;
+    /// let cstr = TrieCharStr::from_bytes_with_nul(b"foo\0")?;
     /// assert!(!cstr.is_empty());
     ///
-    /// let empty_cstr = CStr::from_bytes_with_nul(b"\0")?;
+    /// let empty_cstr = TrieCharStr::from_bytes_with_nul(b"\0")?;
     /// assert!(empty_cstr.is_empty());
     /// assert!(c"".is_empty());
     /// # Ok(())
@@ -726,12 +726,12 @@ impl TrieCharStr {
     /// # Examples
     ///
     /// ```
-    /// use std::ffi::CStr;
+    /// use datrie::trie_str::TrieCharStr;
     ///
-    /// let cstr = CStr::from_bytes_with_nul(b"foo\0").unwrap();
+    /// let cstr = TrieCharStr::from_bytes_with_nul(b"foo\0").unwrap();
     /// assert_eq!(cstr.count_bytes(), 3);
     ///
-    /// let cstr = CStr::from_bytes_with_nul(b"\0").unwrap();
+    /// let cstr = TrieCharStr::from_bytes_with_nul(b"\0").unwrap();
     /// assert_eq!(cstr.count_bytes(), 0);
     /// ```
     #[inline]

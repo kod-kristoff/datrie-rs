@@ -15,6 +15,7 @@ pub mod fileutils;
 mod trie;
 // pub mod trie_char_string;
 pub mod alpha_str;
+pub mod trie_str;
 mod trie_string;
 
 pub use crate::alpha_str::AlphaStr;

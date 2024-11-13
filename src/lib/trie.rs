@@ -1,11 +1,9 @@
-mod trie_str;
-
 use std::ffi::CStr;
 use std::path::Path;
 use std::{fs, io};
 
-pub use trie_str::TrieChar; //, TrieString};
-pub(crate) use trie_str::{TrieCharStr, TrieCharString};
+pub use crate::trie_str::TrieChar; //, TrieString};
+pub(crate) use crate::trie_str::{TrieCharStr, TrieCharString};
 
 use crate::fileutils::{CFile, ReadExt};
 

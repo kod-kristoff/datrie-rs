@@ -154,7 +154,7 @@ impl AlphaStr {
     ///
     /// ```
     /// use datrie::alpha_str::AlphaStr;
-    /// use datrie::alpha_map::AlphaChar;
+    /// use datrie::AlphaChar;
     ///
     /// // const HELLO_PTR: *const AlphaChar = {
     /// //    const BYTES: &[AlphaChar] = b"Hello, world!\0";
