@@ -8,7 +8,6 @@ edition = { workspace = true }
 
 [lib]
 name = "datrie"
-path = "lib.rs"
 crate-type = ["cdylib", "staticlib"]
 test = false
 doctest = false

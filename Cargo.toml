@@ -3,7 +3,7 @@
 resolver = "2"
 members = [
     "crates/datrie",
-    "src/clib",
+    "crates/datrie-clib",
     "crates/datrie-test-suite",
     # "tools",
 ]
@@ -15,8 +15,8 @@ edition = "2021"
 
 [workspace.dependencies]
 # local crates
-datrie = { path = "src/lib" }
-datrie-clib = { path = "src/clib" }
+datrie = { path = "crates/datrie" }
+datrie-clib = { path = "crates/datrie-clib" }
 
 # external crates
 byteorder = "1.5.0"

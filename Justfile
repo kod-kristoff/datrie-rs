@@ -3,7 +3,7 @@ debug:
 
 headers:
 	@mkdir -pv dist/include/datrie
-	@cp -v src/clib/include/datrie/* dist/include/datrie
+	@cp -v crates/datrie-clib/include/datrie/* dist/include/datrie
 
 dist: headers
 

@@ -7,7 +7,6 @@ edition = { workspace = true }
 
 [lib]
 doctest = false
-path = "lib.rs"
 
 [dependencies]
 byteorder = { workspace = true }
