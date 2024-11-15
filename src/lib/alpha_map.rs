@@ -244,7 +244,7 @@ impl AlphaMap {
 }
 
 impl AlphaMap {
-    pub(crate) unsafe fn trie_to_char(&self, tc: TrieChar) -> AlphaChar {
+    pub(crate) fn trie_to_char(&self, tc: TrieChar) -> AlphaChar {
         if (tc as usize) < self.trie_to_alpha_map.len() {
             return self.trie_to_alpha_map[tc as usize];
         }

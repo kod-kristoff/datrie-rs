@@ -68,39 +68,24 @@ fn test_store_retrieve() {
 
         /* retrieve */
         msg_step("Retrieving data from trie");
-        //     is_failed = FALSE;
         for dict_p in &dict_src {
-            let mut trie_data = 0;
-            assert!(
-                Trie::retrieve(&test_trie, dict_p.key, &mut trie_data),
+            assert_eq!(
+                Trie::retrieve(&test_trie, dict_p.key),
+                Some(dict_p.data),
                 "Failed to retrieve key '{:?}'.\n",
                 dict_p.key
             );
-
-            assert_eq!(
-                trie_data, dict_p.data,
-                "Wrong data for key '{:?}';",
-                dict_p.key
-            );
         }
-        //     if (is_failed) {
-        //         printf ("Trie store/retrieval test failed.\n");
-        //         goto err_trie_created;
-        //     }
 
         /* delete */
         msg_step("Deleting some entries from trie");
         let n_entries = dict_src.len();
-        //     srand (time (NULL));
         let mut rng = rand::thread_rng();
         for _ in 0..(n_entries / 3 + 1) {
-            //     for (n_dels = n_entries/3 + 1; n_dels > 0; n_dels--) {
             /* pick an undeleted entry */
             let mut i;
             loop {
                 i = rng.gen_range(0..n_entries);
-                // i = rand () % n_entries;
-                //         } while (TRIE_DATA_READ == dict_src[i].data);
                 if dict_src[i].data != TRIE_DATA_READ {
                     break;
                 }
@@ -113,64 +98,42 @@ fn test_store_retrieve() {
             );
             dict_src[i].data = TRIE_DATA_READ;
         }
-        //     if (is_failed) {
-        //         printf ("Trie deletion test failed.\n");
-        //         goto err_trie_created;
-        //     }
 
         /* retrieve */
         msg_step("Retrieving data from trie again after deletions");
-        //     for (dict_p = dict_src; dict_p->key; dict_p++) {
         for dict_p in &dict_src {
             /* skip deleted entries */
             if TRIE_DATA_READ == dict_p.data {
                 continue;
             }
 
-            let mut trie_data = 0;
-            assert!(
-                Trie::retrieve(&test_trie, dict_p.key, &mut trie_data),
-                "Failed to retrieve key {:?}'.\n",
-                dict_p.key
-            );
             assert_eq!(
-                trie_data, dict_p.data,
-                "Wrong data for key '{:?}';",
-                dict_p.key
+                Trie::retrieve(&test_trie, dict_p.key),
+                Some(dict_p.data),
+                "Failed to retrieve key {:?} with expected data {}'.\n",
+                dict_p.key,
+                dict_p.data
             );
-            //             is_failed = TRUE;
-            //         }
         }
-        //     if (is_failed) {
-        //         printf ("Trie retrival-after-deletion test failed.\n");
-        //         goto err_trie_created;
-        //     }
 
         /* enumerate & check */
         msg_step("Iterating trie contents after deletions");
         let trie_root_state = Trie::root(&test_trie);
         if trie_root_state.is_null() {
             panic!("Failed to get trie root state\n");
-            //         goto err_trie_created;
         }
         let trie_it = TrieIterator::new(trie_root_state);
         if trie_it.is_null() {
             TrieState::free(trie_root_state);
             panic!("Failed to get trie iterator\n");
-            //         goto err_trie_root_created;
         }
 
         while TrieIterator::next(trie_it) == DA_TRUE {
-            //         AlphaChar *key;
-            //         TrieData   key_data, src_data;
-
             let key = TrieIterator::get_key(trie_it);
             if key.is_null() {
                 TrieIterator::free(trie_it);
                 TrieState::free(trie_root_state);
                 panic!("Failed to get key from trie iterator");
-                //             is_failed = TRUE;
-                //             continue;
             }
             let key_data = TrieIterator::get_data(trie_it);
             assert_ne!(
@@ -178,8 +141,6 @@ fn test_store_retrieve() {
                 "Failed to get data from trie iterator for key '{:?}'",
                 key
             );
-            //             is_failed = TRUE;
-            //         }
             /* mark entries found in trie */
             let src_data = dict_src_get_data(&dict_src, key);
             assert_ne!(
@@ -187,13 +148,8 @@ fn test_store_retrieve() {
                 "Extra entry in trie: key '{:?}', data {}.\n",
                 key, key_data
             );
-            //             is_failed = TRUE;
             assert_eq!(src_data, key_data, "Data mismatch for: key '{:?}'", key);
-            //             is_failed = TRUE;
-            //         } else {
             dict_src_set_data(&mut dict_src, key, TRIE_DATA_READ);
-            //         }
-
             free(key as *mut libc::c_void);
         }
 

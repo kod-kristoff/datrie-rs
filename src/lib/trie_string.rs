@@ -9,10 +9,22 @@ extern "C" {
 }
 pub type Bool = libc::c_uint;
 pub type TrieChar = libc::c_uchar;
-#[derive(Copy, Clone)]
-// #[repr(cC)]
+#[derive(Clone)]
+#[repr(transparent)]
 pub struct TrieString {
-    pub ds: DString,
+    // pub ds: DString,
+    ds: Vec<TrieChar>,
+}
+
+impl TrieString {
+    pub fn new() -> TrieString {
+        Self { ds: Vec::default() }
+    }
+    pub fn with_capacity(n_elm: usize) -> TrieString {
+        Self {
+            ds: Vec::with_capacity(n_elm),
+        }
+    }
 }
 /// # Safety
 /// Caller must guarantee that `s` is a valid pointer

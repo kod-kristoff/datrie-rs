@@ -1,16 +1,10 @@
-use std::{
-    ffi::CStr,
-    io::{self, SeekFrom},
-};
+use std::io::{self, SeekFrom};
 
 use ::libc;
 use byteorder::{BigEndian, WriteBytesExt};
 use core::mem::size_of;
 
-use crate::{
-    fileutils::ReadExt, trie::TrieCharString, trie_string::trie_char_strdup, DatrieError,
-    DatrieResult,
-};
+use crate::{fileutils::ReadExt, trie::TrieCharString, DatrieError, DatrieResult};
 
 use super::TrieCharStr;
 
@@ -186,15 +180,7 @@ impl Tail {
 }
 
 impl Tail {
-    pub unsafe fn get_suffix(&self, index: TrieIndex) -> *const TrieChar {
-        let index = index as usize - TAIL_START_BLOCKNO;
-        if index < self.num_tails() {
-            self.tails2[index].suffix.as_ptr()
-        } else {
-            std::ptr::null_mut::<TrieChar>()
-        }
-    }
-    pub fn get_suffix2(&self, index: TrieIndex) -> Option<&TrieCharStr> {
+    pub fn get_suffix(&self, index: TrieIndex) -> Option<&TrieCharStr> {
         self.tails2
             .get(index as usize - TAIL_START_BLOCKNO)
             .map(|s| s.suffix.as_trie_str())
@@ -210,25 +196,8 @@ impl Tail {
             None
         }
     }
-    pub unsafe fn set_suffix(&mut self, index: TrieIndex, suffix: *const TrieChar) -> Bool {
-        let index = index as usize - TAIL_START_BLOCKNO;
 
-        if index < self.num_tails() {
-            if !suffix.is_null() {
-                let tmp = trie_char_strdup(suffix);
-                if tmp.is_null() {
-                    return DA_FALSE;
-                }
-
-                self.tails2[index].suffix = TrieCharString::from_raw(tmp);
-            } else {
-                self.tails2[index].suffix = Default::default();
-            }
-            return DA_TRUE;
-        }
-        DA_FALSE
-    }
-    pub fn set_suffix2(&mut self, index: TrieIndex, suffix: TrieCharString) -> bool {
+    pub fn set_suffix(&mut self, index: TrieIndex, suffix: TrieCharString) -> bool {
         let index = index as usize - TAIL_START_BLOCKNO;
         if index < self.num_tails() {
             // if !suffix.() {
@@ -242,20 +211,12 @@ impl Tail {
     }
 }
 impl Tail {
-    pub unsafe fn add_suffix(&mut self, suffix: *const TrieChar) -> TrieIndex {
-        let new_block: TrieIndex = self.alloc_block();
-        if 0 == new_block {
-            return 0 as libc::c_int;
-        }
-        self.set_suffix(new_block, suffix);
-        new_block
-    }
-    pub fn add_suffix2(&mut self, suffix: TrieCharString) -> TrieIndex {
+    pub fn add_suffix(&mut self, suffix: TrieCharString) -> TrieIndex {
         let new_block = self.alloc_block();
         if new_block == 0 {
             return 0;
         }
-        self.set_suffix2(new_block, suffix);
+        self.set_suffix(new_block, suffix);
         new_block
     }
     fn alloc_block(&mut self) -> TrieIndex {
@@ -292,15 +253,7 @@ impl Tail {
     }
 }
 impl Tail {
-    pub fn get_data(&self, mut index: TrieIndex) -> TrieData {
-        index -= 1 as libc::c_int;
-        if ((index as usize) < self.num_tails()) as libc::c_int as libc::c_long != 0 {
-            self.tails2[index as usize].data
-        } else {
-            -(1 as libc::c_int)
-        }
-    }
-    pub fn get_data2(&self, mut index: TrieIndex) -> Option<TrieData> {
+    pub fn get_data(&self, mut index: TrieIndex) -> Option<TrieData> {
         index -= 1 as libc::c_int;
         if ((index as usize) < self.num_tails()) as libc::c_int as libc::c_long != 0 {
             Some(self.tails2[index as usize].data)
@@ -322,49 +275,12 @@ impl Tail {
     pub unsafe fn delete(&mut self, index: TrieIndex) {
         self.free_block(index);
     }
-    pub unsafe fn walk_str(
-        &self,
-        s: TrieIndex,
-        suffix_idx: *mut libc::c_short,
-        str: *const TrieChar,
-        len: libc::c_int,
-    ) -> libc::c_int {
-        println!("index={s}");
-        let suffix = self.get_suffix(s);
-        if suffix.is_null() as libc::c_int as libc::c_long != 0 {
-            return DA_FALSE as libc::c_int;
-        }
-        let mut i = 0 as libc::c_int;
-        let mut j = *suffix_idx;
-        println!(
-            "suffix={:?}, str={:?}",
-            unsafe { CStr::from_ptr(suffix as *const i8) },
-            unsafe { CStr::from_ptr(str as *const i8) }
-        );
-        let suffix_len = libc::strlen(suffix as *const i8);
-        if j as usize >= suffix_len {
-            return i;
-        }
-        while i < len {
-            println!("i={i}, j={j}");
-            if *str.offset(i as isize) as libc::c_int != *suffix.offset(j as isize) as libc::c_int {
-                break;
-            }
-            i += 1;
-            if '\0' as i32 == *suffix.offset(j as isize) as libc::c_int {
-                break;
-            }
-            j += 1;
-        }
-        *suffix_idx = j;
-        println!("i={i}, suffix_idx={j}");
-        i
-    }
-    pub fn walk_str2(&self, index: TrieIndex, suffix_idx: &mut usize, s: &[TrieChar]) -> usize {
+
+    fn walk_str(&self, index: TrieIndex, suffix_idx: &mut usize, s: &[TrieChar]) -> usize {
         println!("index={index}");
         let mut i = 0;
         let mut j = *suffix_idx;
-        if let Some(suffix) = self.get_suffix2(index) {
+        if let Some(suffix) = self.get_suffix(index) {
             println!("suffix={suffix:?}, str={s:?}");
             let suffix_bytes = suffix.to_bytes();
             if j >= suffix_bytes.len() {
@@ -387,8 +303,8 @@ impl Tail {
         println!("i={i}, suffix_idx={j}");
         i
     }
-    pub fn walk_char2(&self, s: TrieIndex, suffix_idx: &mut usize, c: TrieChar) -> bool {
-        if let Some(suffix) = self.get_suffix2(s) {
+    pub fn walk_char(&self, s: TrieIndex, suffix_idx: &mut usize, c: TrieChar) -> bool {
+        if let Some(suffix) = self.get_suffix(s) {
             let suffix_bytes = suffix.to_bytes();
             if c == b'\0' && { *suffix_idx } == suffix_bytes.len() {
                 return true;
@@ -401,25 +317,5 @@ impl Tail {
             }
         }
         false
-    }
-    pub unsafe fn walk_char(
-        &self,
-        s: TrieIndex,
-        suffix_idx: *mut libc::c_short,
-        c: TrieChar,
-    ) -> Bool {
-        let suffix = self.get_suffix(s);
-        if suffix.is_null() as libc::c_int as libc::c_long != 0 {
-            dbg!("suffix is_null");
-            return DA_FALSE;
-        }
-        let suffix_char = *suffix.offset(*suffix_idx as isize);
-        if suffix_char as libc::c_int == c as libc::c_int {
-            if '\0' as i32 != suffix_char as libc::c_int {
-                *suffix_idx += 1;
-            }
-            return DA_TRUE;
-        }
-        DA_FALSE
     }
 }

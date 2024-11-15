@@ -57,7 +57,7 @@ fn cmp_store_and_store2() -> DatrieResult<()> {
         (AlphaStr::from_slice_with_nul(&[97, 113, 98, 0]).unwrap(), 5),
     ] {
         dbg!(alpha_str);
-        assert_eq!(trie.store(alpha_str, *data), trie2.store2(alpha_str, *data));
+        assert_eq!(trie.store(alpha_str, *data), trie2.store(alpha_str, *data));
         // dbg!(&trie.tail);
         // dbg!(&trie2.tail);
         dbg!(data);

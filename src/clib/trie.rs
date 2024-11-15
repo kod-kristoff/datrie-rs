@@ -122,7 +122,15 @@ pub unsafe extern "C" fn trie_retrieve(
     }
     let trie = unsafe { &*trie };
     let alpha_key = AlphaStr::from_ptr(key);
-    trie.retrieve(&alpha_key, o_data) as Bool
+    match trie.retrieve(&alpha_key) {
+        None => DA_FALSE,
+        Some(data) => {
+            if !o_data.is_null() {
+                *o_data = data;
+            }
+            DA_TRUE
+        }
+    }
 }
 #[no_mangle]
 pub unsafe extern "C" fn trie_store(
@@ -227,7 +235,7 @@ pub unsafe extern "C" fn trie_state_is_terminal(s: *const TrieState) -> Bool {
 #[no_mangle]
 pub unsafe extern "C" fn trie_state_get_data(s: *const TrieState) -> TrieData {
     if s.is_null() {
-        return -(1 as libc::c_int);
+        return -1;
     }
     TrieState::get_data(s)
 }
