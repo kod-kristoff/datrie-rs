@@ -165,6 +165,22 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           env_vars: OS,RUST
 
+  run-c-tests:
+    runs-on: ubuntu-latest
+    name: ubuntu / stable / run-c-tests
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - name: Install stable
+        uses: dtolnay/rust-toolchain@stable
+      - uses: taiki-e/install-action@just
+      - name: cargo generate-lockfile
+        if: hashFiles('Cargo.lock') == ''
+        run: cargo generate-lockfile
+      - name: just check
+        run: just check
+
   # https://github.com/marketplace/actions/alls-green#why used for branch protection checks
   test-check:
     if: always()
@@ -173,6 +189,7 @@ jobs:
       - minimal
       - os-check
       - coverage
+      - run-c-tests
     runs-on: ubuntu-latest
     permissions: {}
     steps:
