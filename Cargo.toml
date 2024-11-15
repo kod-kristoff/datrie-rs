@@ -2,7 +2,7 @@
 [workspace]
 resolver = "2"
 members = [
-    "src/lib",
+    "crates/datrie",
     "src/clib",
     "crates/datrie-test-suite",
     # "tools",
