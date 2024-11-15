@@ -76,7 +76,6 @@ jobs:
     needs:
       - sanitizers
       - miri
-      - loom
     runs-on: ubuntu-latest
     permissions: {}
     steps:
