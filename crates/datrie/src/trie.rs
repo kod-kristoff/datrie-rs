@@ -203,7 +203,7 @@ impl Trie {
             if unsafe { self.da.walk(&mut s, tc as TrieChar) } as u64 == 0 {
                 let Some(key_str) = self
                     .alpha_map
-                    .char_to_trie_str2(AlphaStr::from_slice_with_nul(p).unwrap())
+                    .char_to_trie_str(AlphaStr::from_slice_with_nul(p).unwrap())
                 else {
                     return false;
                 };
@@ -230,7 +230,7 @@ impl Trie {
 
                 if let Some(tail_str) = self
                     .alpha_map
-                    .char_to_trie_str2(AlphaStr::from_slice_with_nul(sep).unwrap())
+                    .char_to_trie_str(AlphaStr::from_slice_with_nul(sep).unwrap())
                 {
                     dbg!(&tail_str);
                     let res_0 = self.branch_in_tail(s, tail_str, data);

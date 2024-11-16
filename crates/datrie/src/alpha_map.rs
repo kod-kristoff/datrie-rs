@@ -28,13 +28,7 @@ struct AlphaRange {
     pub begin: AlphaChar,
     pub end: AlphaChar,
 }
-pub unsafe fn alpha_char_strlen(str: *const AlphaChar) -> isize {
-    let mut p: *const AlphaChar = str;
-    while *p != 0 {
-        p = p.offset(1);
-    }
-    p.offset_from(str)
-}
+
 pub unsafe fn alpha_char_strcmp(
     mut str1: *const AlphaChar,
     mut str2: *const AlphaChar,
@@ -253,40 +247,8 @@ impl AlphaMap {
     pub(crate) fn trie_to_char2(&self, tc: TrieChar) -> Option<AlphaChar> {
         self.trie_to_alpha_map.get(tc as usize).copied()
     }
-    pub(crate) unsafe fn char_to_trie_str(&self, mut str: *const AlphaChar) -> *mut TrieChar {
-        let current_block: u64;
-        let trie_str = libc::malloc((alpha_char_strlen(str) + 1) as usize) as *mut TrieChar;
-        if trie_str.is_null() as libc::c_int as libc::c_long != 0 {
-            return std::ptr::null_mut::<TrieChar>();
-        }
-        let mut p = trie_str;
-        loop {
-            if *str == 0 {
-                current_block = 4906268039856690917;
-                break;
-            }
-            if let Some(tc) = self.char_to_trie(*str) {
-                *p = tc as TrieChar;
-                dbg!(*p);
-                p = p.offset(1);
-                str = str.offset(1);
-            } else {
-                current_block = 13430631152357385211;
-                break;
-            }
-        }
-        match current_block {
-            13430631152357385211 => {
-                libc::free(trie_str as *mut libc::c_void);
-                std::ptr::null_mut::<TrieChar>()
-            }
-            _ => {
-                *p = '\0' as i32 as TrieChar;
-                trie_str
-            }
-        }
-    }
-    pub(crate) fn char_to_trie_str2(&self, str: &AlphaStr) -> Option<TrieCharString> {
+
+    pub(crate) fn char_to_trie_str(&self, str: &AlphaStr) -> Option<TrieCharString> {
         let mut buf = Vec::with_capacity(str.count_slice() + 1);
         dbg!(str);
         let mut str = str.to_slice_with_nul();
