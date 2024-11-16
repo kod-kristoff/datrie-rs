@@ -53,6 +53,8 @@ jobs:
       - name: cargo update
         if: hashFiles('Cargo.lock') != ''
         run: cargo update
+      - name: cargo build --locked
+        run: cargo build --locked --all-features --all-targets
       - name: cargo test
         if: hashFiles('Cargo.lock') != ''
         run: cargo test --locked --all-features --all-targets

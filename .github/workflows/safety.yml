@@ -41,7 +41,7 @@ jobs:
           cat Cargo.toml
         name: Enable debug symbols
       - name: cargo build --locked
-        run: LD_PRELOAD_PATH=target/debug/ cargo build --locked --all-features --all-targets
+        run: cargo build --locked --all-features --all-targets
       - name: cargo test -Zsanitizer=address
         # only --lib --tests b/c of https://github.com/rust-lang/rust/issues/53945
         run: cargo test --lib --tests --all-features --target x86_64-unknown-linux-gnu
