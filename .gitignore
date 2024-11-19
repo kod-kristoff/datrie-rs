@@ -1,5 +1,4 @@
 /target
-/Cargo.lock
 /tmp/
 *.o
 /build-aux/
@@ -11,3 +10,5 @@
 /dist/
 src/lib/test*.tri
 .cache
+crates/datrie-test-suite/test_serialization.tri
+crates/datrie-test-suite/test_file.tri

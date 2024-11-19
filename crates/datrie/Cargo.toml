@@ -1,0 +1,19 @@
+[package]
+name = "datrie"
+version = { workspace = true }
+edition = { workspace = true }
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+doctest = false
+
+[dependencies]
+byteorder = { workspace = true }
+libc = { workspace = true }
+memchr = { workspace = true }
+
+[dev-dependencies]
+rand = { workspace = true }
+rstest = { workspace = true }
+tempfile = { workspace = true }
