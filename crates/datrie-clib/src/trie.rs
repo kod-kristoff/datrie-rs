@@ -109,6 +109,9 @@ pub unsafe extern "C" fn trie_fwrite(trie: *mut Trie, file: *mut FILE) -> libc::
 }
 #[no_mangle]
 pub unsafe extern "C" fn trie_is_dirty(trie: *const Trie) -> Bool {
+    if trie.is_null() {
+        return DA_FALSE;
+    }
     (*trie).is_dirty as Bool
 }
 #[no_mangle]
@@ -201,16 +204,25 @@ pub unsafe extern "C" fn trie_state_free(s: *mut TrieState) {
 }
 #[no_mangle]
 pub unsafe extern "C" fn trie_state_rewind(s: *mut TrieState) {
+    if s.is_null() {
+        return;
+    }
     TrieState::rewind(s)
     // (*s).index = da_get_root((*(*s).trie).da);
     // (*s).is_suffix = DA_FALSE as libc::c_int as libc::c_short;
 }
 #[no_mangle]
 pub unsafe extern "C" fn trie_state_walk(s: *mut TrieState, c: AlphaChar) -> Bool {
+    if s.is_null() {
+        return DA_FALSE;
+    }
     TrieState::walk(s, c)
 }
 #[no_mangle]
 pub unsafe extern "C" fn trie_state_is_walkable(s: *const TrieState, c: AlphaChar) -> Bool {
+    if s.is_null() {
+        return DA_FALSE;
+    }
     TrieState::is_walkable(s, c)
 }
 #[no_mangle]
@@ -223,14 +235,17 @@ pub unsafe extern "C" fn trie_state_walkable_chars(
 }
 #[no_mangle]
 pub unsafe extern "C" fn trie_state_is_single(s: *const TrieState) -> Bool {
+    if s.is_null() {
+        return DA_FALSE;
+    }
     (*s).is_suffix as Bool
 }
 #[no_mangle]
 pub unsafe extern "C" fn trie_state_is_terminal(s: *const TrieState) -> Bool {
-    match TrieState::is_terminal(s) {
-        true => DA_TRUE,
-        false => DA_FALSE,
+    if s.is_null() {
+        return DA_FALSE;
     }
+    TrieState::is_terminal(s) as Bool
 }
 #[no_mangle]
 pub unsafe extern "C" fn trie_state_get_data(s: *const TrieState) -> TrieData {
